@@ -88,7 +88,16 @@ class TenderAwardResourceTest(BaseTenderContentWebTest):
                 u'url', u'name': u'tender_id'}
         ])
 
-        self.set_status('complete')
+        # get tender and check status
+        response = self.app.get('/tenders/{}'.format(self.tender_id))
+        self.assertEqual(response.status, '200 OK')
+        tender = response.json['data']
+        self.assertEqual(tender['status'], 'active')
+
+        # set tender status as 'complete'
+        response = self.app.patch_json('/tenders/{}'.format(tender['id']), {'data': {'status': 'complete'}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
 
         response = self.app.post_json('/tenders/{}/awards'.format(self.tender_id),
                                       {'data': {'suppliers': [test_tender_data["procuringEntity"]],
@@ -208,7 +217,16 @@ class TenderAwardResourceTest(BaseTenderContentWebTest):
         # self.assertEqual(response.content_type, 'application/json')
         # self.assertEqual(len(response.json['data']), 3)
 
-        self.set_status('complete')
+        # get tender and check status
+        response = self.app.get('/tenders/{}'.format(self.tender_id))
+        self.assertEqual(response.status, '200 OK')
+        tender = response.json['data']
+        self.assertEqual(tender['status'], 'active')
+
+        # set tender status as 'complete'
+        response = self.app.patch_json('/tenders/{}'.format(tender['id']), {'data': {'status': 'complete'}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
 
         response = self.app.get('/tenders/{}/awards/{}'.format(self.tender_id, award['id']))
         self.assertEqual(response.status, '200 OK')
@@ -440,7 +458,16 @@ class TenderAwardDocumentResourceTest(BaseTenderContentWebTest):
        self.assertEqual(doc_id, response.json["data"]["id"])
        self.assertEqual('name.doc', response.json["data"]["title"])
 
-       self.set_status('complete')
+       # get tender and check status
+       response = self.app.get('/tenders/{}'.format(self.tender_id))
+       self.assertEqual(response.status, '200 OK')
+       tender = response.json['data']
+       self.assertEqual(tender['status'], 'active')
+
+       # set tender status as 'complete'
+       response = self.app.patch_json('/tenders/{}'.format(tender['id']), {'data': {'status': 'complete'}})
+       self.assertEqual(response.status, '200 OK')
+       self.assertEqual(response.content_type, 'application/json')
 
        response = self.app.post('/tenders/{}/awards/{}/documents'.format(
            self.tender_id, self.award_id), upload_files=[('file', 'name.doc', 'content')], status=403)
@@ -502,7 +529,16 @@ class TenderAwardDocumentResourceTest(BaseTenderContentWebTest):
        self.assertEqual(response.content_length, 8)
        self.assertEqual(response.body, 'content3')
 
-       self.set_status('complete')
+       # get tender and check status
+       response = self.app.get('/tenders/{}'.format(self.tender_id))
+       self.assertEqual(response.status, '200 OK')
+       tender = response.json['data']
+       self.assertEqual(tender['status'], 'active')
+
+       # set tender status as 'complete'
+       response = self.app.patch_json('/tenders/{}'.format(tender['id']), {'data': {'status': 'complete'}})
+       self.assertEqual(response.status, '200 OK')
+       self.assertEqual(response.content_type, 'application/json')
 
        response = self.app.put('/tenders/{}/awards/{}/documents/{}'.format(
            self.tender_id, self.award_id, doc_id), upload_files=[('file', 'name.doc', 'content3')], status=403)
@@ -530,7 +566,16 @@ class TenderAwardDocumentResourceTest(BaseTenderContentWebTest):
        self.assertEqual(doc_id, response.json["data"]["id"])
        self.assertEqual('document description', response.json["data"]["description"])
 
-       self.set_status('complete')
+       # get tender and check status
+       response = self.app.get('/tenders/{}'.format(self.tender_id))
+       self.assertEqual(response.status, '200 OK')
+       tender = response.json['data']
+       self.assertEqual(tender['status'], 'active')
+
+       # set tender status as 'complete'
+       response = self.app.patch_json('/tenders/{}'.format(tender['id']), {'data': {'status': 'complete'}})
+       self.assertEqual(response.status, '200 OK')
+       self.assertEqual(response.content_type, 'application/json')
 
        response = self.app.patch_json('/tenders/{}/awards/{}/documents/{}'.format(self.tender_id, self.award_id, doc_id), {"data": {"description": "document description"}}, status=403)
        self.assertEqual(response.status, '403 Forbidden')
