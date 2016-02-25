@@ -342,3 +342,108 @@ class TenderAwardResource(object):
             procurementMethodType='negotiation')
 class TenderNegotiationAwardResource(TenderAwardResource):
     """ Tender Negotiation Award Resource """
+
+    @json_view(content_type="application/json", permission='edit_tender', validators=(validate_award_data,))
+    def collection_post(self):
+        """Accept or reject bidder application
+
+        Creating new Award
+        ------------------
+
+        Example request to create award:
+
+        .. sourcecode:: http
+
+            POST /tenders/4879d3f8ee2443169b5fbbc9f89fa607/awards HTTP/1.1
+            Host: example.com
+            Accept: application/json
+
+            {
+                "data": {
+                    "status": "active",
+                    "suppliers": [
+                        {
+                            "id": {
+                                "name": "Державне управління справами",
+                                "scheme": "https://ns.openprocurement.org/ua/edrpou",
+                                "uid": "00037256",
+                                "uri": "http://www.dus.gov.ua/"
+                            },
+                            "address": {
+                                "countryName": "Україна",
+                                "postalCode": "01220",
+                                "region": "м. Київ",
+                                "locality": "м. Київ",
+                                "streetAddress": "вул. Банкова, 11, корпус 1"
+                            }
+                        }
+                    ],
+                    "value": {
+                        "amount": 489,
+                        "currency": "UAH",
+                        "valueAddedTaxIncluded": true
+                    }
+                }
+            }
+
+        This is what one should expect in response:
+
+        .. sourcecode:: http
+
+            HTTP/1.1 201 Created
+            Content-Type: application/json
+
+            {
+                "data": {
+                    "id": "4879d3f8ee2443169b5fbbc9f89fa607",
+                    "date": "2014-10-28T11:44:17.947Z",
+                    "status": "active",
+                    "suppliers": [
+                        {
+                            "id": {
+                                "name": "Державне управління справами",
+                                "scheme": "https://ns.openprocurement.org/ua/edrpou",
+                                "uid": "00037256",
+                                "uri": "http://www.dus.gov.ua/"
+                            },
+                            "address": {
+                                "countryName": "Україна",
+                                "postalCode": "01220",
+                                "region": "м. Київ",
+                                "locality": "м. Київ",
+                                "streetAddress": "вул. Банкова, 11, корпус 1"
+                            }
+                        }
+                    ],
+                    "value": {
+                        "amount": 489,
+                        "currency": "UAH",
+                        "valueAddedTaxIncluded": true
+                    }
+                }
+            }
+
+        """
+        tender = self.request.validated['tender']
+        if tender.status != 'active':
+            self.request.errors.add('body', 'data', 'Can\'t create award in current ({}) tender status'.format(tender.status))
+            self.request.errors.status = 403
+            return
+        stand_still_end = tender.tenderPeriod.endDate
+        if stand_still_end > get_now():
+            self.request.errors.add('body', 'data', 'Can\'t create award before stand-still period end ({})'.format(stand_still_end.isoformat()))
+            self.request.errors.status = 403
+            return
+        if tender.awards and tender.awards[-1].status in ['pending', 'active']:
+            self.request.errors.add('body', 'data', 'Can\'t create new award while any ({}) award exists'.format(tender.awards[-1].status))
+            self.request.errors.status = 403
+            return
+        award = self.request.validated['award']
+        award.complaintPeriod = {'startDate': get_now().isoformat()}
+        tender.awards.append(award)
+        if save_tender(self.request):
+            LOGGER.info('Created tender award {}'.format(award.id),
+                        extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_award_create'}, {'award_id': award.id}))
+            self.request.response.status = 201
+            self.request.response.headers['Location'] = self.request.route_url('Tender Awards', tender_id=tender.id, award_id=award['id'])
+            return {'data': award.serialize("view")}
