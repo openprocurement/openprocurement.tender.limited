@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
+from copy import deepcopy
 from datetime import timedelta
 
 from openprocurement.api import ROUTE_PREFIX
@@ -1136,6 +1137,14 @@ class TenderProcessTest(BaseTenderWebTest):
 
 class TenderNegotiationProcessTest(TenderProcessTest):
     initial_data = test_tender_negotiation_data
+
+    def test_tendering_period_invalid(self):
+        data = deepcopy(test_tender_negotiation_data)
+        data['tenderPeriod']['endDate'] = get_now().isoformat()
+        # create tender
+        response = self.app.post_json('/tenders', {"data": data}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual("tenderPeriod should be greater than {} days".format(TENDER_STAND_STILL_DAYS), response.json['errors'][0]["description"][0])
 
     def test_single_award_tender(self):
         # empty tenders listing
