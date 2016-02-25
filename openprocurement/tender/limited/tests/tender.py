@@ -6,6 +6,7 @@ from openprocurement.api import ROUTE_PREFIX
 from openprocurement.api.models import get_now
 from openprocurement.tender.limited.models import Tender
 from openprocurement.tender.limited.models_negotiation import Tender as NegotiationTender
+from openprocurement.tender.limited.models_negotiation import TENDER_STAND_STILL_DAYS
 from openprocurement.tender.limited.tests.base import (
     test_tender_data, test_tender_negotiation_data, BaseTenderWebTest)
 
@@ -692,6 +693,118 @@ class TenderNegotiationResourceTest(TenderResourceTest):
         self.assertNotEqual(data['doc_id'], tender['id'])
         self.assertNotEqual(data['tenderID'], tender['tenderID'])
 
+    def test_patch_tender(self):
+        response = self.app.get('/tenders')
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(len(response.json['data']), 0)
+
+        response = self.app.post_json('/tenders', {'data': self.initial_data})
+        self.assertEqual(response.status, '201 Created')
+        tender = response.json['data']
+        owner_token = response.json['access']['token']
+        dateModified = tender.pop('dateModified')
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
+            tender['id'], owner_token), {'data': {'procurementMethodRationale': 'Limited'}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        new_tender = response.json['data']
+        new_dateModified = new_tender.pop('dateModified')
+        tender['procurementMethodRationale'] = 'Limited'
+        self.assertEqual(tender, new_tender)
+        self.assertNotEqual(dateModified, new_dateModified)
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
+            tender['id'], owner_token), {'data': {'dateModified': new_dateModified}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        new_tender2 = response.json['data']
+        new_dateModified2 = new_tender2.pop('dateModified')
+        self.assertEqual(new_tender, new_tender2)
+        self.assertEqual(new_dateModified, new_dateModified2)
+
+        revisions = self.db.get(tender['id']).get('revisions')
+        self.assertEqual(revisions[-1][u'changes'][0]['op'], u'remove')
+        self.assertEqual(revisions[-1][u'changes'][0]['path'], u'/procurementMethodRationale')
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
+            tender['id'], owner_token), {'data': {'items': [self.initial_data['items'][0]]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
+            tender['id'], owner_token), {'data': {'items': [{}, self.initial_data['items'][0]]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        item0 = response.json['data']['items'][0]
+        item1 = response.json['data']['items'][1]
+        self.assertNotEqual(item0.pop('id'), item1.pop('id'))
+        self.assertEqual(item0, item1)
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
+            tender['id'], owner_token), {'data': {'items': [{}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(len(response.json['data']['items']), 1)
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'items': [{"classification": {
+            "scheme": "CPV",
+            "id": "55523100-3",
+            "description": "Послуги з харчування у школах"
+        }}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'items': [{"additionalClassifications": [
+            tender['items'][0]["additionalClassifications"][0] for i in range(3)
+        ]}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'items': [{"additionalClassifications": tender['items'][0]["additionalClassifications"]}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+
+        # The following operations are performed for a proper transition to the "Complete" tender status
+
+        # time travel
+        tender_obj = self.db.get(tender['id'])
+        tender_obj['tenderPeriod']['endDate'] = get_now().isoformat()
+        tender_obj['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
+        self.db.save(tender_obj)
+
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
+            tender['id'], owner_token), {'data': {'suppliers': [self.initial_data["procuringEntity"]], 'status': 'pending'}})
+        award_id = response.json['data']['id']
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender['id'], award_id, owner_token),
+                                       {"data": {"status": "active"}})
+
+        response = self.app.get('/tenders/{}/contracts'.format(
+                tender['id']))
+        contract_id = response.json['data'][0]['id']
+
+        response = self.app.post('/tenders/{}/contracts/{}/documents?acc_token={}'.format(
+            tender['id'], contract_id, owner_token), upload_files=[('file', 'name.doc', 'content')])
+        self.assertEqual(response.status, '201 Created')
+
+        save_tender = self.db.get(tender['id'])
+        for i in save_tender.get('awards', []):
+            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        self.db.save(save_tender)
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
+            tender['id'], contract_id, owner_token), {'data': {'status': 'active'}})
+        self.assertEqual(response.status, '200 OK')
+
+        response = self.app.get('/tenders/{}'.format(tender['id']))
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.json['data']['status'], 'complete')
+
+        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'status': 'active'}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update tender in current (complete) status")
+
 class TenderProcessTest(BaseTenderWebTest):
 
     def test_tender_status_change(self):
@@ -1023,6 +1136,348 @@ class TenderProcessTest(BaseTenderWebTest):
 
 class TenderNegotiationProcessTest(TenderProcessTest):
     initial_data = test_tender_negotiation_data
+
+    def test_single_award_tender(self):
+        # empty tenders listing
+        response = self.app.get('/tenders')
+        self.assertEqual(response.json['data'], [])
+        # create tender
+        response = self.app.post_json('/tenders',
+                                      {"data": self.initial_data})
+        tender_id = self.tender_id = response.json['data']['id']
+        owner_token = response.json['access']['token']
+
+        # time travel
+        tender = self.db.get(tender_id)
+        tender['tenderPeriod']['endDate'] = get_now().isoformat()
+        tender['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
+        self.db.save(tender)
+
+        # get awards
+        response = self.app.get('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token))
+        self.assertEqual(response.json['data'], [])
+
+        # create award
+        response = self.app.post_json('/tenders/{}/awards'.format(tender_id),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}})
+        self.assertEqual(response.status, '201 Created')
+
+        # get awards
+        response = self.app.get('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token))
+
+        # get pending award
+        award_id = [i['id'] for i in response.json['data'] if i['status'] == 'pending'][0]
+
+        # set award as active
+        self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award_id, owner_token), {"data": {"status": "active"}})
+
+        # get contract id
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        contract_id = response.json['data']['contracts'][-1]['id']
+
+        # time travel
+        tender = self.db.get(tender_id)
+        for i in tender.get('awards', []):
+            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        self.db.save(tender)
+
+        # sign contract
+        self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(tender_id, contract_id, owner_token), {"data": {"status": "active"}})
+        # check status
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.json['data']['status'], 'complete')
+
+        # create new tender
+        response = self.app.post_json('/tenders',
+                                      {"data": self.initial_data})
+        tender_id = self.tender_id = response.json['data']['id']
+        owner_token = response.json['access']['token']
+
+        # time travel
+        tender = self.db.get(tender_id)
+        tender['tenderPeriod']['endDate'] = get_now().isoformat()
+        tender['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
+        self.db.save(tender)
+
+        # create award
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}})
+        self.assertEqual(response.status, '201 Created')
+
+        # get awards
+        response = self.app.get('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token))
+        self.assertEqual(len(response.json['data']), 1)
+
+        # get last award
+        award_id = [i['id'] for i in response.json['data'] if i['status'] == 'pending'][-1]
+
+        # set award as active
+        self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award_id, owner_token), {"data": {"status": "active"}})
+
+        # get contract id
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        contract = response.json['data']['contracts'][-1]
+        self.assertEqual(contract['awardID'], award_id)
+
+        # time travel
+        tender = self.db.get(tender_id)
+        for i in tender.get('awards', []):
+            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        self.db.save(tender)
+
+        # set award to cancelled
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award_id, owner_token),
+                                       {"data": {"status": "cancelled"}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.json['data']['status'], 'cancelled')
+
+        # try to sign contract
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(tender_id, contract['id'], owner_token),
+                                       {"data": {"status": "active"}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update contract in current (cancelled) status")
+
+        # tender status remains the same
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.json['data']['status'], 'active')
+
+    def test_multiple_awards_tender(self):
+        # empty tenders listing
+        response = self.app.get('/tenders')
+        self.assertEqual(response.json['data'], [])
+        # create tender
+        response = self.app.post_json('/tenders',
+                                      {"data": self.initial_data})
+        tender_id = self.tender_id = response.json['data']['id']
+        owner_token = response.json['access']['token']
+
+        # get awards
+        response = self.app.get('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token))
+        self.assertEqual(response.json['data'], [])
+
+        # try to create award
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertIn("Can\'t create award before stand-still period end (", response.json['errors'][0]["description"])
+
+        # time travel
+        tender = self.db.get(tender_id)
+        tender['tenderPeriod']['endDate'] = get_now().isoformat()
+        tender['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
+        self.db.save(tender)
+
+        # create award
+        response = self.app.post_json('/tenders/{}/awards'.format(tender_id),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}})
+        self.assertEqual(response.status, '201 Created')
+        award = response.json['data']
+
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award['id'], owner_token),
+                            {"data": {"status": "active"}})
+        self.assertEqual(response.status, '200 OK')
+
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                'value': {"amount": 501}}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't create new award while any (active) award exists")
+
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award['id'], owner_token),
+                            {"data": {"status": "cancelled"}})
+
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 505}}})
+        self.assertEqual(response.status, '201 Created')
+
+        # get awards
+        response = self.app.get('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token))
+        self.assertEqual(len(response.json['data']), 2)
+
+        # get last award
+        award_id = [i['id'] for i in response.json['data'] if i['status'] == 'pending'][-1]
+
+        # set award as active
+        self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award_id, owner_token), {"data": {"status": "active"}})
+
+        # get contract id
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        contract = response.json['data']['contracts'][-1]
+        self.assertEqual(contract['awardID'], award_id)
+
+        # time travel
+        tender = self.db.get(tender_id)
+        for i in tender.get('awards', []):
+            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        self.db.save(tender)
+
+        # sign contract
+        self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(tender_id, contract['id'], owner_token), {"data": {"status": "active"}})
+        # check status
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.json['data']['status'], 'complete')
+
+    def test_tender_cancellation(self):
+        # empty tenders listing
+        response = self.app.get('/tenders')
+        self.assertEqual(response.json['data'], [])
+        # create tender
+        response = self.app.post_json('/tenders',
+                                      {"data": self.initial_data})
+        tender_id = self.tender_id = response.json['data']['id']
+        owner_token = response.json['access']['token']
+
+        # create cancellation
+        response = self.app.post_json('/tenders/{}/cancellations?acc_token={}'.format(tender_id, owner_token), {'data': {
+            'reason': 'invalid conditions',
+            'status': 'active'
+        }})
+        self.assertEqual(response.status, '201 Created')
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.status, '200 OK')
+        tender = response.json['data']
+        self.assertEqual(tender['status'], 'cancelled')
+
+        # create tender
+        response = self.app.post_json('/tenders',
+                                      {"data": self.initial_data})
+        tender_id = self.tender_id = response.json['data']['id']
+        owner_token = response.json['access']['token']
+
+        # time travel
+        tender = self.db.get(tender_id)
+        tender['tenderPeriod']['endDate'] = get_now().isoformat()
+        tender['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
+        self.db.save(tender)
+
+        # create award
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}})
+        self.assertEqual(response.status, '201 Created')
+
+        # create cancellation
+        response = self.app.post_json('/tenders/{}/cancellations?acc_token={}'.format(tender_id, owner_token), {'data': {
+            'reason': 'invalid conditions',
+            'status': 'active'
+        }})
+        self.assertEqual(response.status, '201 Created')
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.status, '200 OK')
+        tender = response.json['data']
+        self.assertEqual(tender['status'], 'cancelled')
+
+        # create tender
+        response = self.app.post_json('/tenders',
+                                      {"data": self.initial_data})
+        tender_id = self.tender_id = response.json['data']['id']
+        owner_token = response.json['access']['token']
+
+        # time travel
+        tender = self.db.get(tender_id)
+        tender['tenderPeriod']['endDate'] = get_now().isoformat()
+        tender['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
+        self.db.save(tender)
+
+        # create award
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}})
+        self.assertEqual(response.status, '201 Created')
+        # get awards
+        response = self.app.get('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token))
+        self.assertEqual(len(response.json['data']), 1)
+        award = response.json['data'][0]
+        self.assertEqual(award['status'], 'pending')
+
+        # set award as active
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award['id'], owner_token), {"data": {"status": "active"}})
+        self.assertEqual(response.status, '200 OK')
+
+        # get contract id
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        contract_id = response.json['data']['contracts'][-1]['id']
+
+        # create cancellation in stand still
+        response = self.app.post_json('/tenders/{}/cancellations?acc_token={}'.format(tender_id, owner_token), {'data': {
+            'reason': 'invalid conditions',
+            'status': 'active'
+        }})
+        self.assertEqual(response.status, '201 Created')
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.status, '200 OK')
+        tender = response.json['data']
+        self.assertEqual(tender['status'], 'cancelled')
+
+        # create tender
+        response = self.app.post_json('/tenders',
+                                      {"data": self.initial_data})
+        tender_id = self.tender_id = response.json['data']['id']
+        owner_token = response.json['access']['token']
+
+        # time travel
+        tender = self.db.get(tender_id)
+        tender['tenderPeriod']['endDate'] = get_now().isoformat()
+        tender['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
+        self.db.save(tender)
+
+        # create award
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token),
+                                      {'data': {'suppliers': [self.initial_data["procuringEntity"]],
+                                                "value": {"amount": 500}}})
+        self.assertEqual(response.status, '201 Created')
+        # get awards
+        response = self.app.get('/tenders/{}/awards?acc_token={}'.format(tender_id, owner_token))
+        self.assertEqual(len(response.json['data']), 1)
+        award = response.json['data'][0]
+        self.assertEqual(award['status'], 'pending')
+
+        # set award as active
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award['id'], owner_token), {"data": {"status": "active"}})
+        self.assertEqual(response.status, '200 OK')
+
+        # get contract id
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        contract_id = response.json['data']['contracts'][-1]['id']
+
+        tender = self.db.get(tender_id)
+        for i in tender.get('awards', []):
+            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        self.db.save(tender)
+
+        # sign contract
+        self.app.authorization = ('Basic', ('broker', ''))
+        self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(tender_id, contract_id, owner_token), {"data": {"status": "active"}})
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.status, '200 OK')
+        tender = response.json['data']
+        self.assertEqual(tender['status'], 'complete')
+
+        # create cancellation
+        response = self.app.post_json('/tenders/{}/cancellations?acc_token={}'.format(tender_id, owner_token), {'data': {
+            'reason': 'invalid conditions',
+            'status': 'active'
+        }}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.status, '200 OK')
+        tender = response.json['data']
+        self.assertEqual(tender['status'], 'complete')
 
 
 def suite():
