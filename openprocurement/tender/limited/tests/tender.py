@@ -1494,6 +1494,9 @@ def suite():
     suite.addTest(unittest.makeSuite(TenderTest))
     suite.addTest(unittest.makeSuite(TenderResourceTest))
     suite.addTest(unittest.makeSuite(TenderProcessTest))
+    suite.addTest(unittest.makeSuite(TenderNegotiationTest))
+    suite.addTest(unittest.makeSuite(TenderNegotiationResourceTest))
+    suite.addTest(unittest.makeSuite(TenderNegotiationProcessTest))
     return suite
 
 
