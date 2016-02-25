@@ -678,6 +678,19 @@ class TenderResourceTest(BaseTenderWebTest):
 class TenderNegotiationResourceTest(TenderResourceTest):
     initial_data = test_tender_negotiation_data
 
+    def test_create_tender_generated(self):
+        data = self.initial_data.copy()
+        data.update({'id': 'hash', 'doc_id': 'hash2', 'tenderID': 'hash3'})
+        response = self.app.post_json('/tenders', {'data': data})
+        self.assertEqual(response.status, '201 Created')
+        self.assertEqual(response.content_type, 'application/json')
+        tender = response.json['data']
+        self.assertEqual(set(tender), set([u'id', u'dateModified', u'tenderID', u'status',
+                                           u'items', u'value', u'procuringEntity', u'owner', u'tenderPeriod',
+                                           u'procurementMethod', u'procurementMethodType', u'title']))
+        self.assertNotEqual(data['id'], tender['id'])
+        self.assertNotEqual(data['doc_id'], tender['id'])
+        self.assertNotEqual(data['tenderID'], tender['tenderID'])
 
 class TenderProcessTest(BaseTenderWebTest):
 
