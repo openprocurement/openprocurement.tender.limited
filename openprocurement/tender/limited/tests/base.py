@@ -22,6 +22,9 @@ test_tender_negotiation_data['procurementMethodType'] = "negotiation"
 test_tender_negotiation_data['tenderPeriod'] = {'startDate': (now).isoformat(),
                                                 'endDate': (now + timedelta(days=TENDER_STAND_STILL_DAYS + 1)).isoformat()}
 
+test_tender_negotiation_quick_data = deepcopy(test_tender_data)
+test_tender_negotiation_quick_data['procurementMethodType'] = "negotiation.quick"
+
 
 class BaseTenderWebTest(BaseTenderWebTest):
     initial_data = test_tender_data

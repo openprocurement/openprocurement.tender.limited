@@ -1,19 +1,22 @@
 # -*- coding: utf-8 -*-
 import unittest
+from iso8601 import parse_date
 
-from openprocurement.tender.limited.tests.base import (BaseTenderContentWebTest,
-                                                       test_tender_data)
+from openprocurement.tender.limited.tests.base import (
+    BaseTenderContentWebTest, test_tender_data, test_tender_negotiation_data,
+    test_tender_negotiation_quick_data)
 
 
 class TenderContractResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
+    initial_data = test_tender_data
     initial_bids = None #test_bids
 
     def setUp(self):
         super(TenderContractResourceTest, self).setUp()
         # Create award
         response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
-            self.tender_id, self.tender_token), {'data': {'suppliers': [test_tender_data["procuringEntity"]], 'status': 'pending'}})
+            self.tender_id, self.tender_token), {'data': {'suppliers': [self.initial_data["procuringEntity"]], 'status': 'pending'}})
         award = response.json['data']
         self.award_id = award['id']
         response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, self.award_id, self.tender_token), {"data": {"status": "active"}})
@@ -111,7 +114,8 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
 
         tender = self.db.get(self.tender_id)
         for i in tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+            if i.get('complaintPeriod', {}):  # works for negotiation tender
+                i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
         self.db.save(tender)
 
         response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, contract['id'], self.tender_token),
@@ -140,7 +144,8 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
         # time travel
         tender = self.db.get(self.tender_id)
         for i in tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+            if i.get('complaintPeriod', {}):  # reporting procedure does not have complaintPeriod
+                i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
         self.db.save(tender)
 
         response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token),
@@ -157,7 +162,7 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
 
         # at next steps we test to create contract in 'cancelled' tender status
         response = self.app.post_json('/tenders?acc_token={}',
-                                      {"data": test_tender_data})
+                                      {"data": self.initial_data})
         self.assertEqual(response.status, '201 Created')
         tender_id = response.json['data']['id']
         tender_token = response.json['access']['token']
@@ -178,17 +183,6 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
         response = self.app.get('/tenders/{}/contracts'.format(
                 self.tender_id))
         self.contract_id = response.json['data'][0]['id']
-
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token), {"data": {"status": "active"}}, status=403)
-        self.assertEqual(response.status, '403 Forbidden')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertIn("Can't sign contract before stand-still period end (", response.json['errors'][0]["description"])
-
-        # at next steps we test to patch contract in 'complete' tender status
-        tender = self.db.get(self.tender_id)
-        for i in tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
-        self.db.save(tender)
 
         response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token),
                                        {"data": {"status": "active"}})
@@ -221,13 +215,13 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
 
         # at next steps we test to patch contract in 'cancelled' tender status
         response = self.app.post_json('/tenders?acc_token={}',
-                                      {"data": test_tender_data})
+                                      {"data": self.initial_data})
         self.assertEqual(response.status, '201 Created')
         tender_id = response.json['data']['id']
         tender_token = response.json['access']['token']
 
         response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
-            tender_id, tender_token), {'data': {'suppliers': [test_tender_data["procuringEntity"]], 'status': 'pending'}})
+            tender_id, tender_token), {'data': {'suppliers': [self.initial_data["procuringEntity"]], 'status': 'pending'}})
         award_id = response.json['data']['id']
         response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award_id, tender_token), {"data": {"status": "active"}})
 
@@ -315,6 +309,158 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
                 u'url', u'name': u'tender_id'}
         ])
 
+    def test_award_id_change_is_not_allowed(self):
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
+            self.tender_id, self.award_id, self.tender_token), {"data": {"status": "cancelled"}})
+        old_award_id = self.award_id
+
+        # upload new award
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
+            self.tender_id, self.tender_token), {'data': {'suppliers': [self.initial_data["procuringEntity"]]}})
+        award = response.json['data']
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
+            self.tender_id, award['id'], self.tender_token), {"data": {"status": "active"}})
+        response = self.app.get('/tenders/{}/contracts'.format(
+                self.tender_id))
+        contract = response.json['data'][-1]
+        self.assertEqual(contract['awardID'], award['id'])
+        self.assertNotEqual(contract['awardID'], old_award_id)
+
+        # try to update awardID value
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
+            self.tender_id, contract['id'], self.tender_token), {"data": {"awardID": old_award_id}})
+        response = self.app.get('/tenders/{}/contracts'.format(
+                self.tender_id))
+        contract = response.json['data'][-1]
+        self.assertEqual(contract['awardID'], award['id'])
+        self.assertNotEqual(contract['awardID'], old_award_id)
+
+
+class TenderNegotiationContractResourceTest(TenderContractResourceTest):
+    initial_data = test_tender_negotiation_data
+    stand_still_period_days = 10
+
+    def test_patch_tender_contract(self):
+        response = self.app.get('/tenders/{}/contracts'.format(
+                self.tender_id))
+        self.contract_id = response.json['data'][0]['id']
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token), {"data": {"status": "active"}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertIn("Can't sign contract before stand-still period end (", response.json['errors'][0]["description"])
+
+        response = self.app.get('/tenders/{}/awards'.format(
+                self.tender_id))
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(len(response.json['data']), 1)
+        award = response.json['data'][0]
+        start = parse_date(award['complaintPeriod']['startDate'])
+        end = parse_date(award['complaintPeriod']['endDate'])
+        delta = end - start
+        self.assertEqual(delta.days, self.stand_still_period_days)
+
+        # at next steps we test to patch contract in 'complete' tender status
+        tender = self.db.get(self.tender_id)
+        for i in tender.get('awards', []):
+            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        self.db.save(tender)
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token),
+                                       {"data": {"status": "active"}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['data']["status"], "active")
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
+            self.tender_id, self.contract_id, self.tender_token), {"data": {"status": "cancelled"}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update contract in current (complete) tender status")
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
+            self.tender_id, self.contract_id, self.tender_token), {"data": {"status": "pending"}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update contract in current (complete) tender status")
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token),
+                                       {"data": {"status": "active"}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update contract in current (complete) tender status")
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token),
+                                       {"data": {"awardID": "894917dc8b1244b6aab9ab0ad8c8f48a"}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+
+        # at next steps we test to patch contract in 'cancelled' tender status
+        response = self.app.post_json('/tenders?acc_token={}',
+                                      {"data": self.initial_data})
+        self.assertEqual(response.status, '201 Created')
+        tender_id = response.json['data']['id']
+        tender_token = response.json['access']['token']
+
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
+            tender_id, tender_token), {'data': {'suppliers': [self.initial_data["procuringEntity"]], 'status': 'pending'}})
+        award_id = response.json['data']['id']
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender_id, award_id, tender_token), {"data": {"status": "active"}})
+
+        response = self.app.get('/tenders/{}/contracts'.format(
+                tender_id))
+        contract_id = response.json['data'][0]['id']
+
+        response = self.app.post_json('/tenders/{}/cancellations?acc_token={}'.format(
+            tender_id, tender_token), {'data': {'reason': 'cancellation reason', 'status': 'active'}})
+        self.assertEqual(response.status, '201 Created')
+
+        response = self.app.get('/tenders/{}'.format(tender_id))
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.json['data']['status'], 'cancelled')
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(tender_id, contract_id, tender_token),
+                                       {"data": {"awardID": "894917dc8b1244b6aab9ab0ad8c8f48a"}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(tender_id, contract_id, tender_token),
+                                       {"data": {"status": "active"}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update contract in current (cancelled) tender status")
+
+        response = self.app.patch_json('/tenders/{}/contracts/some_id?acc_token={}'.format(self.tender_id, self.tender_token),
+                                       {"data": {"status": "active"}}, status=404)
+        self.assertEqual(response.status, '404 Not Found')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': u'Not Found', u'location':
+                u'url', u'name': u'contract_id'}
+        ])
+
+        response = self.app.patch_json('/tenders/some_id/contracts/some_id', {"data": {"status": "active"}}, status=404)
+        self.assertEqual(response.status, '404 Not Found')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': u'Not Found', u'location':
+                u'url', u'name': u'tender_id'}
+        ])
+
+        response = self.app.get('/tenders/{}/contracts/{}'.format(self.tender_id, self.contract_id))
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['data']["status"], "active")
+
+
+
+class TenderNegotiationQuickContractResourceTest(TenderNegotiationContractResourceTest):
+    initial_data = test_tender_negotiation_quick_data
+    stand_still_period_days = 5
+
+
 class TenderContractDocumentResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
     initial_bids = None
@@ -323,7 +469,7 @@ class TenderContractDocumentResourceTest(BaseTenderContentWebTest):
         super(TenderContractDocumentResourceTest, self).setUp()
         # Create award
         response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
-            self.tender_id, self.tender_token), {'data': {'suppliers': [test_tender_data["procuringEntity"]], 'status': 'pending'}})
+            self.tender_id, self.tender_token), {'data': {'suppliers': [self.initial_data["procuringEntity"]], 'status': 'pending'}})
         award = response.json['data']
         self.award_id = award['id']
         response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, self.award_id, self.tender_token),
@@ -605,6 +751,13 @@ class TenderContractDocumentResourceTest(BaseTenderContentWebTest):
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['errors'][0]["description"], "Can't update document in current (complete) tender status")
 
+
+class TenderContractNegotiationDocumentResourceTest(TenderContractDocumentResourceTest):
+    initial_data = test_tender_negotiation_data
+
+
+class TenderContractNegotiationQuickDocumentResourceTest(TenderContractNegotiationDocumentResourceTest):
+    initial_data = test_tender_negotiation_quick_data
 
 def suite():
     suite = unittest.TestSuite()

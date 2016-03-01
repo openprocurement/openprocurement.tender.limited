@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
 import unittest
-from copy import deepcopy
-from datetime import timedelta
 
 from openprocurement.api import ROUTE_PREFIX
 from openprocurement.api.models import get_now
-from openprocurement.tender.limited.models import Tender
-from openprocurement.tender.limited.models_negotiation import Tender as NegotiationTender
-from openprocurement.tender.limited.models_negotiation import TENDER_STAND_STILL_DAYS
+from openprocurement.tender.limited.models import (NegotiationTender,
+                                                   NegotiationQuickTender,
+                                                   ReportingTender)
 from openprocurement.tender.limited.tests.base import (
-    test_tender_data, test_tender_negotiation_data, BaseTenderWebTest)
+    test_tender_data, test_tender_negotiation_data,
+    test_tender_negotiation_quick_data, BaseTenderWebTest)
 
 
 class TenderTest(BaseTenderWebTest):
 
     def test_simple_add_tender(self):
-        u = Tender(test_tender_data)
+        u = ReportingTender(test_tender_data)
         u.tenderID = "UA-X"
 
         assert u.id is None
@@ -59,6 +58,32 @@ class TenderNegotiationTest(BaseTenderWebTest):
         assert u.procurementMethodType == fromdb['procurementMethodType']
 
         u.delete_instance(self.db)
+
+
+class TenderNegotiationQuickTest(TenderNegotiationTest):
+    initial_data = test_tender_negotiation_quick_data
+
+    def test_simple_add_tender(self):
+        u = NegotiationTender(test_tender_negotiation_quick_data)
+        u.tenderID = "UA-X"
+
+        assert u.id is None
+        assert u.rev is None
+
+        u.store(self.db)
+
+        assert u.id is not None
+        assert u.rev is not None
+
+        fromdb = self.db.get(u.id)
+
+        assert u.tenderID == fromdb['tenderID']
+        assert u.doc_type == "Tender"
+        assert u.procurementMethodType == "negotiation.quick"
+        assert u.procurementMethodType == fromdb['procurementMethodType']
+
+        u.delete_instance(self.db)
+
 
 class TenderResourceTest(BaseTenderWebTest):
 
@@ -583,7 +608,8 @@ class TenderResourceTest(BaseTenderWebTest):
 
         save_tender = self.db.get(tender['id'])
         for i in save_tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+            if i.get('complaintPeriod', {}):  # works for negotiation tender
+                i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
         self.db.save(save_tender)
 
         response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
@@ -680,131 +706,8 @@ class TenderResourceTest(BaseTenderWebTest):
 class TenderNegotiationResourceTest(TenderResourceTest):
     initial_data = test_tender_negotiation_data
 
-    def test_create_tender_generated(self):
-        data = self.initial_data.copy()
-        data.update({'id': 'hash', 'doc_id': 'hash2', 'tenderID': 'hash3'})
-        response = self.app.post_json('/tenders', {'data': data})
-        self.assertEqual(response.status, '201 Created')
-        self.assertEqual(response.content_type, 'application/json')
-        tender = response.json['data']
-        self.assertEqual(set(tender), set([u'id', u'dateModified', u'tenderID', u'status',
-                                           u'items', u'value', u'procuringEntity', u'owner', u'tenderPeriod',
-                                           u'procurementMethod', u'procurementMethodType', u'title']))
-        self.assertNotEqual(data['id'], tender['id'])
-        self.assertNotEqual(data['doc_id'], tender['id'])
-        self.assertNotEqual(data['tenderID'], tender['tenderID'])
-
-    def test_patch_tender(self):
-        response = self.app.get('/tenders')
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(len(response.json['data']), 0)
-
-        response = self.app.post_json('/tenders', {'data': self.initial_data})
-        self.assertEqual(response.status, '201 Created')
-        tender = response.json['data']
-        owner_token = response.json['access']['token']
-        dateModified = tender.pop('dateModified')
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
-            tender['id'], owner_token), {'data': {'procurementMethodRationale': 'Limited'}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-        new_tender = response.json['data']
-        new_dateModified = new_tender.pop('dateModified')
-        tender['procurementMethodRationale'] = 'Limited'
-        self.assertEqual(tender, new_tender)
-        self.assertNotEqual(dateModified, new_dateModified)
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
-            tender['id'], owner_token), {'data': {'dateModified': new_dateModified}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-        new_tender2 = response.json['data']
-        new_dateModified2 = new_tender2.pop('dateModified')
-        self.assertEqual(new_tender, new_tender2)
-        self.assertEqual(new_dateModified, new_dateModified2)
-
-        revisions = self.db.get(tender['id']).get('revisions')
-        self.assertEqual(revisions[-1][u'changes'][0]['op'], u'remove')
-        self.assertEqual(revisions[-1][u'changes'][0]['path'], u'/procurementMethodRationale')
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
-            tender['id'], owner_token), {'data': {'items': [self.initial_data['items'][0]]}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
-            tender['id'], owner_token), {'data': {'items': [{}, self.initial_data['items'][0]]}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-        item0 = response.json['data']['items'][0]
-        item1 = response.json['data']['items'][1]
-        self.assertNotEqual(item0.pop('id'), item1.pop('id'))
-        self.assertEqual(item0, item1)
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(
-            tender['id'], owner_token), {'data': {'items': [{}]}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(len(response.json['data']['items']), 1)
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'items': [{"classification": {
-            "scheme": "CPV",
-            "id": "55523100-3",
-            "description": "Послуги з харчування у школах"
-        }}]}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'items': [{"additionalClassifications": [
-            tender['items'][0]["additionalClassifications"][0] for i in range(3)
-        ]}]}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'items': [{"additionalClassifications": tender['items'][0]["additionalClassifications"]}]}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-
-        # The following operations are performed for a proper transition to the "Complete" tender status
-
-        # time travel
-        tender_obj = self.db.get(tender['id'])
-        tender_obj['tenderPeriod']['endDate'] = get_now().isoformat()
-        tender_obj['tenderPeriod']['startDate'] = (get_now() - timedelta(days=TENDER_STAND_STILL_DAYS+1)).isoformat()
-        self.db.save(tender_obj)
-
-        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
-            tender['id'], owner_token), {'data': {'suppliers': [self.initial_data["procuringEntity"]], 'status': 'pending'}})
-        award_id = response.json['data']['id']
-        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(tender['id'], award_id, owner_token),
-                                       {"data": {"status": "active"}})
-
-        response = self.app.get('/tenders/{}/contracts'.format(
-                tender['id']))
-        contract_id = response.json['data'][0]['id']
-
-        response = self.app.post('/tenders/{}/contracts/{}/documents?acc_token={}'.format(
-            tender['id'], contract_id, owner_token), upload_files=[('file', 'name.doc', 'content')])
-        self.assertEqual(response.status, '201 Created')
-
-        save_tender = self.db.get(tender['id'])
-        for i in save_tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
-        self.db.save(save_tender)
-
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
-            tender['id'], contract_id, owner_token), {'data': {'status': 'active'}})
-        self.assertEqual(response.status, '200 OK')
-
-        response = self.app.get('/tenders/{}'.format(tender['id']))
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.json['data']['status'], 'complete')
-
-        response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'status': 'active'}}, status=403)
-        self.assertEqual(response.status, '403 Forbidden')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['errors'][0]["description"], "Can't update tender in current (complete) status")
+class TenderNegotiationQuickResourceTest(TenderNegotiationResourceTest):
+    initial_data = test_tender_negotiation_quick_data
 
 class TenderProcessTest(BaseTenderWebTest):
 
@@ -875,7 +778,8 @@ class TenderProcessTest(BaseTenderWebTest):
         # time travel
         tender = self.db.get(tender_id)
         for i in tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+            if i.get('complaintPeriod', {}):  # reporting procedure does not have complaintPeriod
+                i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
         self.db.save(tender)
 
         # sign contract
@@ -914,7 +818,8 @@ class TenderProcessTest(BaseTenderWebTest):
         # time travel
         tender = self.db.get(tender_id)
         for i in tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+            if i.get('complaintPeriod', {}):  # reporting procedure does not have complaintPeriod
+                i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
         self.db.save(tender)
 
         # set award to cancelled
@@ -995,7 +900,8 @@ class TenderProcessTest(BaseTenderWebTest):
         # time travel
         tender = self.db.get(tender_id)
         for i in tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+            if i.get('complaintPeriod', {}):  # reporting procedure does not have complaintPeriod
+                i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
         self.db.save(tender)
 
         # sign contract
@@ -1111,7 +1017,8 @@ class TenderProcessTest(BaseTenderWebTest):
 
         tender = self.db.get(tender_id)
         for i in tender.get('awards', []):
-            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+            if i.get('complaintPeriod', {}):  # works for negotiation tender
+                i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
         self.db.save(tender)
 
         # sign contract
@@ -1487,6 +1394,10 @@ class TenderNegotiationProcessTest(TenderProcessTest):
         self.assertEqual(response.status, '200 OK')
         tender = response.json['data']
         self.assertEqual(tender['status'], 'complete')
+
+
+class TenderNegotiationQuickProcessTest(TenderNegotiationProcessTest):
+    initial_data = test_tender_negotiation_quick_data
 
 
 def suite():
