@@ -1045,6 +1045,7 @@ class TenderProcessTest(BaseTenderWebTest):
 class TenderNegotiationProcessTest(TenderProcessTest):
     initial_data = test_tender_negotiation_data
 
+
 class TenderNegotiationQuickProcessTest(TenderNegotiationProcessTest):
     initial_data = test_tender_negotiation_quick_data
 
@@ -1055,6 +1056,7 @@ def suite():
     suite.addTest(unittest.makeSuite(TenderResourceTest))
     suite.addTest(unittest.makeSuite(TenderProcessTest))
     return suite
+
 
 if __name__ == '__main__':
     unittest.main(defaultTest='suite')
