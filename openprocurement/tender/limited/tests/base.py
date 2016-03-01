@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from openprocurement.api.utils import apply_data_patch
 from openprocurement.api.tests.base import test_tender_data as base_data
 from openprocurement.api.tests.base import BaseTenderWebTest, PrefixedRequestClass
-from openprocurement.tender.limited.models_negotiation import TENDER_STAND_STILL_DAYS
 
 
 now = datetime.now()
@@ -19,8 +18,6 @@ test_tender_data['procurementMethodType'] = "reporting"
 
 test_tender_negotiation_data = deepcopy(test_tender_data)
 test_tender_negotiation_data['procurementMethodType'] = "negotiation"
-test_tender_negotiation_data['tenderPeriod'] = {'startDate': (now).isoformat(),
-                                                'endDate': (now + timedelta(days=TENDER_STAND_STILL_DAYS + 1)).isoformat()}
 
 test_tender_negotiation_quick_data = deepcopy(test_tender_data)
 test_tender_negotiation_quick_data['procurementMethodType'] = "negotiation.quick"
