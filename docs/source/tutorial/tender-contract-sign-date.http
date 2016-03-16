@@ -1,14 +1,12 @@
 PATCH /api/2.0/tenders/278d33d925b0479f83c3ba428713d834/contracts/fd2c4d5f8562472ea3f937384b4ef10c?acc_token=120eb9e302d3413cbd3aaf6ec8347283 HTTP/1.0
 Authorization: Basic YnJva2VyOg==
-Content-Length: 36
+Content-Length: 60
 Content-Type: application/json
 Host: api-sandbox.openprocurement.org
 
 {
   "data": {
-    "value": {
-      "amount": 238
-    }
+    "dateSigned": "2016-03-16T14:33:16.370519+02:00"
   }
 }
 
@@ -68,6 +66,7 @@ Content-Type: application/json; charset=UTF-8
       "amount": 238.0, 
       "valueAddedTaxIncluded": true
     }, 
+    "dateSigned": "2016-03-16T14:33:16.370519+02:00", 
     "awardID": "dc50dc2dc16b4a4ab1452c0d6ebdd4ca", 
     "id": "fd2c4d5f8562472ea3f937384b4ef10c", 
     "contractID": "UA-2016-03-16-000001-1"

@@ -12,12 +12,13 @@ from openprocurement.api.models import (
 )
 from openprocurement.api.models import (
     Value, IsoDateTimeType, Document, Organization, Item, SchematicsDocument,
-    Model, Contract, Revision, Period,
+    Model, Revision, Period,
 )
 from openprocurement.api.models import validate_cpv_group, validate_items_uniq
 from openprocurement.api.models import get_now
 from openprocurement.api.models import Cancellation as BaseCancellation
 from openprocurement.api.models import ITender
+from openprocurement.api.models import Contract as BaseContract
 from openprocurement.tender.openua.models import Complaint
 
 
@@ -57,6 +58,15 @@ class Cancellation(BaseCancellation):
     def validate_relatedLot(self, data, relatedLot):
         return
 
+class Contract(BaseContract):
+
+    def validate_dateSigned(self, data, value):
+        if value and isinstance(data['__parent__'], Model):
+            award = [i for i in data['__parent__'].awards if i.id == data['awardID']][0]
+            if award.date >= value:
+                raise ValidationError(u"Contract signature date should be after award complaint period end date ({})".format(award.complaintPeriod.endDate.isoformat()))
+            if value > get_now():
+                raise ValidationError(u"Contract signature date can't be in the future")
 
 @implementer(ITender)
 class Tender(SchematicsDocument, Model):

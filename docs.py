@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import openprocurement.tender.limited.tests.base as base_test
 from openprocurement.api.tests.base import PrefixedRequestClass
+from openprocurement.api.models import get_now
 from openprocurement.tender.limited.tests.tender import BaseTenderWebTest
 from webtest import TestApp
 
@@ -291,16 +292,20 @@ class TenderLimitedResourceTest(BaseTenderWebTest):
 
         ####  Set contract value
 
-        # tender = self.db.get(self.tender_id)
-        # for i in tender.get('awards', []):
-        #     i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
-        # self.db.save(tender)
-
         with open('docs/source/tutorial/tender-contract-set-contract-value.http', 'w') as self.app.file_obj:
             response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
                 self.tender_id, self.contract_id, owner_token), {"data": {"value": {"amount": 238}}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.json['data']['value']['amount'], 238)
+
+        #### Setting contract signature date
+        #
+
+        with open('docs/source/tutorial/tender-contract-sign-date.http', 'w') as self.app.file_obj:
+            response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
+                self.tender_id, self.contract_id, owner_token), {'data': {"dateSigned": get_now().isoformat()} })
+            self.assertEqual(response.status, '200 OK')
+
 
         #### Uploading Contract documentation
         #

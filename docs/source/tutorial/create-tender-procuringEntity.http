@@ -62,10 +62,10 @@ Host: api-sandbox.openprocurement.org
 
 Response: 201 Created
 Content-Type: application/json; charset=UTF-8
-Location: http://api-sandbox.openprocurement.org/api/2.0/tenders/7d322198810f459193daa6b83c38582d
+Location: http://api-sandbox.openprocurement.org/api/2.0/tenders/278d33d925b0479f83c3ba428713d834
 {
   "access": {
-    "token": "6bcf8662fce14fd7aaad57c968dbd57a"
+    "token": "120eb9e302d3413cbd3aaf6ec8347283"
   }, 
   "data": {
     "procurementMethod": "limited", 
@@ -95,10 +95,10 @@ Location: http://api-sandbox.openprocurement.org/api/2.0/tenders/7d322198810f459
       "amount": 500000.0, 
       "valueAddedTaxIncluded": true
     }, 
-    "dateModified": "2016-03-16T13:04:42.035423+02:00", 
+    "dateModified": "2016-03-16T14:33:14.166308+02:00", 
     "tenderID": "UA-2016-03-16-000001", 
     "owner": "broker", 
-    "id": "7d322198810f459193daa6b83c38582d", 
+    "id": "278d33d925b0479f83c3ba428713d834", 
     "procuringEntity": {
       "contactPoint": {
         "url": "http://sch10.edu.vn.ua/", 
