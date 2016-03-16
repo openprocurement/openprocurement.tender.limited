@@ -1,4 +1,4 @@
-PATCH /api/2.0/tenders/ccf78f4245044a9c89d560a399d0c3bd/contracts/433674047b2b44e9b568c1cd2d7a0854?acc_token=e179da039ca04642b0f1cafc2101f730 HTTP/1.0
+PATCH /api/2.0/tenders/89c58ebed6a54fa1a68911521ba415f2/contracts/497b51c61d1c46d78916252d4d3e48d7?acc_token=a00f5e5e454d462f937860fa2901dc82 HTTP/1.0
 Authorization: Basic YnJva2VyOg==
 Content-Length: 30
 Content-Type: application/json
@@ -61,8 +61,8 @@ Content-Type: application/json; charset=UTF-8
       "amount": 475000.0, 
       "valueAddedTaxIncluded": true
     }, 
-    "awardID": "4df461681a914a9bbaf554c8618ed795", 
-    "id": "433674047b2b44e9b568c1cd2d7a0854", 
+    "awardID": "08df1eaeee9a429088199293cbab5c92", 
+    "id": "497b51c61d1c46d78916252d4d3e48d7", 
     "contractID": "UA-2016-03-16-000001-1"
   }
 }

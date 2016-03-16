@@ -1,4 +1,4 @@
-PATCH /api/2.0/tenders/278d33d925b0479f83c3ba428713d834/contracts/fd2c4d5f8562472ea3f937384b4ef10c?acc_token=120eb9e302d3413cbd3aaf6ec8347283 HTTP/1.0
+PATCH /api/2.0/tenders/12e5ee11241142dc9230c9b3d0c526c6/contracts/a7e14e8495a8459695d590a8191627ec?acc_token=007f64e22bef4c08889c42d829806b0e HTTP/1.0
 Authorization: Basic YnJva2VyOg==
 Content-Length: 30
 Content-Type: application/json
@@ -18,21 +18,21 @@ Content-Type: application/json; charset=UTF-8
     "documents": [
       {
         "title": "contract_first_document.doc", 
-        "url": "http://api-sandbox.openprocurement.org/api/2.0/tenders/278d33d925b0479f83c3ba428713d834/contracts/fd2c4d5f8562472ea3f937384b4ef10c/documents/2f9243d6c3884dff92647b7498f05854?download=0a2dd6494c0843bc8d1a7dd61c4e4d7c", 
+        "url": "http://api-sandbox.openprocurement.org/api/2.0/tenders/12e5ee11241142dc9230c9b3d0c526c6/contracts/a7e14e8495a8459695d590a8191627ec/documents/5226c3b87d404eb39a01a0db2db22a13?download=5cd493041a5d48e89105d23b2ebbe5dd", 
         "format": "application/msword", 
         "documentOf": "tender", 
-        "datePublished": "2016-03-16T14:33:16.708030+02:00", 
-        "id": "2f9243d6c3884dff92647b7498f05854", 
-        "dateModified": "2016-03-16T14:33:16.708070+02:00"
+        "datePublished": "2016-03-16T15:04:08.314379+02:00", 
+        "id": "5226c3b87d404eb39a01a0db2db22a13", 
+        "dateModified": "2016-03-16T15:04:08.314419+02:00"
       }, 
       {
         "title": "contract_second_document.doc", 
-        "url": "http://api-sandbox.openprocurement.org/api/2.0/tenders/278d33d925b0479f83c3ba428713d834/contracts/fd2c4d5f8562472ea3f937384b4ef10c/documents/931f7a537d1f4b42b805968a8fce545e?download=56ecc253feb14490b480f9b4e3f97d21", 
+        "url": "http://api-sandbox.openprocurement.org/api/2.0/tenders/12e5ee11241142dc9230c9b3d0c526c6/contracts/a7e14e8495a8459695d590a8191627ec/documents/ea137e97f43943c9975a80d15fa10a9c?download=c134d0d249fc453b8b5835d11b63f073", 
         "format": "application/msword", 
         "documentOf": "tender", 
-        "datePublished": "2016-03-16T14:33:16.990382+02:00", 
-        "id": "931f7a537d1f4b42b805968a8fce545e", 
-        "dateModified": "2016-03-16T14:33:16.990422+02:00"
+        "datePublished": "2016-03-16T15:04:08.627146+02:00", 
+        "id": "ea137e97f43943c9975a80d15fa10a9c", 
+        "dateModified": "2016-03-16T15:04:08.627186+02:00"
       }
     ], 
     "items": [
@@ -81,14 +81,18 @@ Content-Type: application/json; charset=UTF-8
         }
       }
     ], 
+    "period": {
+      "startDate": "2016-03-16T15:04:07.981263+02:00", 
+      "endDate": "2017-03-16T15:04:07.981320+02:00"
+    }, 
     "value": {
       "currency": "UAH", 
       "amount": 238.0, 
       "valueAddedTaxIncluded": true
     }, 
-    "dateSigned": "2016-03-16T14:33:16.370519+02:00", 
-    "awardID": "dc50dc2dc16b4a4ab1452c0d6ebdd4ca", 
-    "id": "fd2c4d5f8562472ea3f937384b4ef10c", 
+    "dateSigned": "2016-03-16T15:04:07.748110+02:00", 
+    "awardID": "f208403a2d5a4993874eedee17e12ab3", 
+    "id": "a7e14e8495a8459695d590a8191627ec", 
     "contractID": "UA-2016-03-16-000001-1"
   }
 }
