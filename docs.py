@@ -289,6 +289,19 @@ class TenderLimitedResourceTest(BaseTenderWebTest):
                 self.tender_id, owner_token))
         self.contract_id = response.json['data'][0]['id']
 
+        ####  Set contract value
+
+        # tender = self.db.get(self.tender_id)
+        # for i in tender.get('awards', []):
+        #     i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        # self.db.save(tender)
+
+        with open('docs/source/tutorial/tender-contract-set-contract-value.http', 'w') as self.app.file_obj:
+            response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
+                self.tender_id, self.contract_id, owner_token), {"data": {"value": {"amount": 238}}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.json['data']['value']['amount'], 238)
+
         #### Uploading Contract documentation
         #
 

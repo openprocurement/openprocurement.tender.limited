@@ -6,8 +6,8 @@ Tutorial
 Tender creation
 ---------------
 
-You can create three procedures: 
- * ``reporting`` - reporting with no stand-still period 
+You can create three procedures:
+ * ``reporting`` - reporting with no stand-still period
  * ``negotiation`` - negotiation procedure with 10 day stand-still before contract registration
  * ``negotiation.quick`` - quick negotiation procedure with 5 day stand-still before contract registration
 
@@ -79,7 +79,7 @@ follow the :ref:`upload` rules.
 .. include:: tutorial/upload-tender-notice.http
    :code:
 
-`201 Created` response code and `Location` header confirm document creation. 
+`201 Created` response code and `Location` header confirm document creation.
 
 In case we made an error, we can reupload the document over the older version:
 
@@ -164,6 +164,15 @@ Award confirmation for **negotiation.quick** procedure:
 
 The difference between ``startDate`` and ``endDate`` in ``complaintPeriod`` record for **negotiation.quick** is 5 days.
 
+Set contract value
+------------------
+
+By default contract value is set based on the award, but there is a possibility to set custom contract value. If you want to **lower contract value**, you can insert new one into the `amount` field.
+
+.. include:: tutorial/tender-contract-set-contract-value.http
+   :code:
+
+`200 OK` response was returned. The value was modified successfully.
 
 Uploading contract documentation
 --------------------------------
@@ -216,7 +225,7 @@ Cancelling tender
 Procuring entity can cancel tender anytime. The following steps should be applied:
 
 1. Prepare cancellation request
-2. Fill it with the protocol describing the cancellation reasons 
+2. Fill it with the protocol describing the cancellation reasons
 3. Cancel the tender with the reasons prepared.
 
 Only the request that has been activated (3rd step above) has power to
