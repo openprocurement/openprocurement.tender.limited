@@ -89,6 +89,11 @@ Schema
     * negotiation/negotiation.quick procedure: 
         [complaint period end - now]
 
+:date:
+    string, :ref:`date`
+
+    The date the contract was changed or activated.
+
 :documents:
     List of :ref:`Document` objects
 
