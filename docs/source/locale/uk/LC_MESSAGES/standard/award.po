@@ -1,10 +1,10 @@
-# sorenabell <sorenabell@quintagroup.com>, 2016.
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: openprocurement.tender.limited 1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2016-02-05 10:08+0200\n"
-"PO-Revision-Date: 2016-06-14 10:22+0200\n"
+"PO-Revision-Date: 2016-06-14 10:30+0200\n"
 "Last-Translator: sorenabell <sorenabell@quintagroup.com>\n"
 "Language-Team: Ukrainian <info@quintagroup.com>\n"
 "MIME-Version: 1.0\n"
@@ -147,12 +147,8 @@ msgstr "булеве значення"
 #: ../../source/standard/award.rst:82
 msgid ""
 "Confirms that Procuring entity has no grounds to reject a participant in "
-"accordance with Article 17 of the Law of Ukraine \"On public procurement\"."
+"accordance with Article 17 of the Law of Ukraine \"On Public Procurement\"."
 msgstr ""
 "Підтверджує відсутність підстав для відмови учаснику згідно Cтатті 17 Закону"
 " України \"Про публічні закупівлі\"."
 
-#~ msgid ""
-#~ "Confirms the absence of grounds for refusal to participate in accordance "
-#~ "with Article 17 of the Law of Ukraine \"On Public Procurement\"."
-#~ msgstr ""

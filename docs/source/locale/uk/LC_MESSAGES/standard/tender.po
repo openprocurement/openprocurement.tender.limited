@@ -1,5 +1,4 @@
 #
-# sorenabell <sorenabell@quintagroup.com>, 2016.
 msgid ""
 msgstr ""
 "Project-Id-Version: openprocurement.tender.limited 1.0\n"
@@ -378,5 +377,3 @@ msgstr ""
 "Можливі значення для переговорних процедур **negotiation** та"
 " **negotiation.quick**:"
 
-#~ msgid "Possible values for **negotiation** procedure:"
-#~ msgstr "Можливі значення для \"звичайної\" **переговорної процедури**:"

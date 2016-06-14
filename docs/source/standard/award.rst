@@ -79,7 +79,7 @@ Schema
 :qualified:
     bool
 
-    Confirms that Procuring entity has no grounds to reject a participant in accordance with Article 17 of the Law of Ukraine "On public procurement".
+    Confirms that Procuring entity has no grounds to reject a participant in accordance with Article 17 of the Law of Ukraine "On Public Procurement".
 
 Award workflow
 --------------
