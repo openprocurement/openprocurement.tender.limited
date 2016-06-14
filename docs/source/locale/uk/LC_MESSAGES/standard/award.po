@@ -1,18 +1,18 @@
-#
+# sorenabell <sorenabell@quintagroup.com>, 2016.
 msgid ""
 msgstr ""
 "Project-Id-Version: openprocurement.tender.limited 1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2016-02-05 10:08+0200\n"
-"PO-Revision-Date: 2016-03-09 13:04+0200\n"
-"Last-Translator: Zoriana Zaiats <sorenabell@quintagroup.com>\n"
-"Language-Team: American English <info@quintagroup.com>\n"
+"PO-Revision-Date: 2016-06-14 10:22+0200\n"
+"Last-Translator: sorenabell <sorenabell@quintagroup.com>\n"
+"Language-Team: Ukrainian <info@quintagroup.com>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en_US\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Lokalize 1.5\n"
+"X-Generator: Lokalize 2.0\n"
 
 #: ../../source/standard/award.rst:8
 msgid "Award"
@@ -38,7 +38,7 @@ msgstr "|ocdsDescription| Назва рішення про визначення 
 msgid "|ocdsDescription| Award description."
 msgstr "|ocdsDescription| Опис рішення про визначення переможця."
 
-#: ../../source/standard/award.rst:32
+#: ../../source/standard/award.rst:32 ../../source/standard/award.rst:75
 msgid "string"
 msgstr "рядок"
 
@@ -114,11 +114,11 @@ msgstr "об’єкт `Value`"
 msgid "List of :ref:`Organization` objects"
 msgstr "Список об’єктів :ref:`Organization`"
 
-#: ../../source/standard/award.rst:75
+#: ../../source/standard/award.rst:85
 msgid "Award workflow"
 msgstr "Схема роботи Award"
 
-#: ../../source/standard/award.rst:89
+#: ../../source/standard/award.rst:99
 msgid "\\* marks initial state"
 msgstr "\\* позначає початковий стан"
 
@@ -134,3 +134,25 @@ msgstr "рядок, :ref:`Date`, генерується автоматично, 
 msgid "List of :ref:`Item` objects, auto-generated, read-only"
 msgstr "Список об’єктів :ref:`Item`, генерується автоматично, лише для читання"
 
+#: ../../source/standard/award.rst:77
+msgid ""
+"The text field of any length that contains information about subcontractor."
+msgstr ""
+"Текстове поле будь-якого розміру, що містить інформацію про підрядника."
+
+#: ../../source/standard/award.rst:80
+msgid "bool"
+msgstr "булеве значення"
+
+#: ../../source/standard/award.rst:82
+msgid ""
+"Confirms that Procuring entity has no grounds to reject a participant in "
+"accordance with Article 17 of the Law of Ukraine \"On public procurement\"."
+msgstr ""
+"Підтверджує відсутність підстав для відмови учаснику згідно Cтатті 17 Закону"
+" України \"Про публічні закупівлі\"."
+
+#~ msgid ""
+#~ "Confirms the absence of grounds for refusal to participate in accordance "
+#~ "with Article 17 of the Law of Ukraine \"On Public Procurement\"."
+#~ msgstr ""
