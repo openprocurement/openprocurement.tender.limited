@@ -176,6 +176,10 @@ class TenderAwardResource(APIResource):
             self.request.errors.status = 403
             return
         award = self.request.validated['award']
+        if award.status == "active" and not award.qualified:
+            self.request.errors.add('body', 'data', 'Can\'t create new award in active status and not qualified')
+            self.request.errors.status = 403
+            return
         tender.awards.append(award)
         if save_tender(self.request):
             self.LOGGER.info('Created tender award {}'.format(award.id),
@@ -303,6 +307,10 @@ class TenderAwardResource(APIResource):
         award = self.request.context
         award_status = award.status
         apply_patch(self.request, save=False, src=self.request.context.serialize())
+        if award.status == "active" and not award.qualified:
+            self.request.errors.add('body', 'data', 'Can\'t update award to active status with not qualified')
+            self.request.errors.status = 403
+            return
         if award_status == 'pending' and award.status == 'active':
             tender.contracts.append(type(tender).contracts.model_class({
                 'awardID': award.id,
@@ -434,6 +442,10 @@ class TenderNegotiationAwardResource(TenderAwardResource):
             self.request.errors.status = 403
             return
         award = self.request.validated['award']
+        if award.status == "active" and not award.qualified:
+            self.request.errors.add('body', 'data', 'Can\'t create new award in active status and not qualified')
+            self.request.errors.status = 403
+            return
         award.complaintPeriod = {'startDate': get_now().isoformat()}
         tender.awards.append(award)
         if save_tender(self.request):
@@ -511,6 +523,10 @@ class TenderNegotiationAwardResource(TenderAwardResource):
         award_status = award.status
         apply_patch(self.request, save=False, src=self.request.context.serialize())
         award.date = get_now()
+        if award.status == "active" and not award.qualified:
+            self.request.errors.add('body', 'data', 'Can\'t update award to active status with not qualified')
+            self.request.errors.status = 403
+            return
         if award_status == 'pending' and award.status == 'active':
             normalized_end = calculate_normalized_date(award.date, tender, True)
             award.complaintPeriod.endDate = calculate_business_date(normalized_end, self.stand_still_delta, tender)
