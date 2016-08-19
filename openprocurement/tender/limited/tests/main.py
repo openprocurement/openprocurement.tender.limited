@@ -3,7 +3,7 @@
 import unittest
 
 from openprocurement.tender.limited.tests import (tender, award, contract,
-                                                  document, cancellation)
+                                                  document, cancellation, auth)
 
 
 def suite():
@@ -13,6 +13,7 @@ def suite():
     suite.addTest(document.suite())
     suite.addTest(contract.suite())
     suite.addTest(cancellation.suite())
+    suite.addTest(auth.suite())
     return suite
 
 
