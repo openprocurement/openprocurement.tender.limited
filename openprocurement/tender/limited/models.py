@@ -162,6 +162,7 @@ class Tender(SchematicsDocument, Model):
     _attachments = DictType(DictType(BaseType), default=dict())  # couchdb attachments
     dateModified = IsoDateTimeType()
     owner_token = StringType()
+    transfer_token = StringType()
     owner = StringType()
     if SANDBOX_MODE:
         procurementMethodDetails = StringType()
