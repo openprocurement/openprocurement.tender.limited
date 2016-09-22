@@ -264,18 +264,13 @@ class TenderResourceTest(BaseTenderWebTest):
                            'qualified': True,
                            'id': award_id}
                            ]
-        
+
         data['contracts'] = [{'title': 'contract title', 'description': 'contract description', 'awardID' : award_id}]
         response = self.app.post_json('/tenders', {'data': data})
         self.assertEqual(response.status, '201 Created')
-        
-        if 'contracts' in response.json['data']:
-            if 'awards' in response.json['data']:
-                pass
-            else:
-                self.assertNotIn('awards', response.json['data']) 
-        
-        
+        self.assertNotIn('contracts', response.json['data'])
+        self.assertNotIn('awards', response.json['data'])
+
     def test_listing_changes(self):
         response = self.app.get('/tenders?feed=changes')
         self.assertEqual(response.status, '200 OK')
