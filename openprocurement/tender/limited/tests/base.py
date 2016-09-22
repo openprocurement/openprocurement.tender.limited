@@ -51,6 +51,7 @@ class BaseTenderWebTest(BaseBaseTenderWebTest):
     def tearDown(self):
         if self.docservice:
             self.tearDownDS()
+        super(BaseBaseTenderWebTest, self).tearDown()
 
     def set_status(self, status, extra=None):
         data = {'status': status}
