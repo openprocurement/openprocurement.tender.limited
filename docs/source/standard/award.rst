@@ -81,6 +81,11 @@ Schema
 
     Confirms that Procuring entity has no grounds to reject a participant in accordance with Article 17 of the Law of Ukraine "On Public Procurement".
 
+:lotID:
+    string
+
+    Id of related :ref:`lot`. Only if `tender.procurementMethodType` is `negotiation` or `negotiation.quick`.
+
 Award workflow
 --------------
 
