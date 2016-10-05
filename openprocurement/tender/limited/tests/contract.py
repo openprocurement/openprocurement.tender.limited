@@ -2,13 +2,52 @@
 import unittest
 import time
 from iso8601 import parse_date
-from datetime import timedelta
+from datetime import timedelta,  
 
 from openprocurement.api.models import get_now, SANDBOX_MODE
 from openprocurement.tender.limited.tests.base import (
     BaseTenderContentWebTest, test_tender_data, test_tender_negotiation_data,
-    test_tender_negotiation_quick_data, test_organization)
+    test_tender_negotiation_quick_data, test_organization, item_unit)
 
+
+test_tender_data["items"].append(item_unit)
+
+
+class TenderContractItemTest(BaseTenderContentWebTest):
+    initial_data = test_tender_data
+    
+    def setUp(self):
+        super(TenderContractItemTest, self).setUp()
+        # Create award
+        response = self.app.post_json('/tenders/{}/awards?acc_token={}'.format(
+            self.tender_id, self.tender_token), {'data': {'suppliers': [test_organization], 'status': 'pending', 'qualified': True,
+                                                          'value': {"amount": 469, "currency": "UAH", "valueAddedTaxIncluded": True}}})
+        award = response.json['data']
+        self.award_id = award['id']
+        response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, self.award_id, self.tender_token),
+                                       {"data": {"status": "active"}})
+    
+    def test_item_unit_value(self):
+        # tender має unit в якому є 'code' = 44617100-9 і 'name' = items
+        self.assertEqual(test_tender_data["items"][0]["unit"]["code"], '44617100-9')
+        
+        # беру контракт
+        response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
+        self.assertEqual(response.json['data'][0]["items"][0]["unit"]['code'], '44617100-9')
+        self.contract_id = response.json['data'][0]['id']
+        
+        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, self.contract_id, self.tender_token), {"data": {"items": [{"unit": {"code":'500', "value":{"amount":'1000'}}}]}})
+        print response.json["data"]
+        if self.initial_data["procurementMethodType"] == "reporting":
+            self.assertEqual('500', response.json["data"]["items"][0]["unit"]["code"])
+            self.assertEqual(1000, response.json["data"]["items"][0]["unit"]["value"]["amount"])
+            self.assertEqual("UAH", response.json["data"]["items"][0]["unit"]["value"]["currency"])
+            
+        if self.initial_data["procurementMethodType"] == "negotiation" or self.initial_data["procurementMethodType"] == "negotiation.quick":
+            self.assertEqual('44617100-9', response.json["data"]["items"][0]["unit"]["code"])
+            
+        
+    
 
 class TenderContractResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
@@ -882,6 +921,12 @@ class TenderContractDocumentResourceTest(BaseTenderContentWebTest):
         self.assertEqual(response.json['errors'][0]["description"], "Can't update document in current (complete) tender status")
 
 
+class ContractNegotiationItemsTest(TenderContractItemTest):
+    initial_data = test_tender_negotiation_data
+
+class ContractNegotiationQuickItemsTest(TenderContractItemTest):
+    initial_data = test_tender_negotiation_quick_data
+
 class TenderContractNegotiationDocumentResourceTest(TenderContractDocumentResourceTest):
     initial_data = test_tender_negotiation_data
 
@@ -891,6 +936,7 @@ class TenderContractNegotiationQuickDocumentResourceTest(TenderContractNegotiati
 
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(TenderContractItemTest))
     suite.addTest(unittest.makeSuite(TenderContractResourceTest))
     suite.addTest(unittest.makeSuite(TenderContractDocumentResourceTest))
     return suite
