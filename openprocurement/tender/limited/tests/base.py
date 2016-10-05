@@ -10,6 +10,41 @@ from openprocurement.api.tests.base import BaseTenderWebTest as BaseBaseTenderWe
 from openprocurement.api.tests.base import test_organization
 
 now = datetime.now()
+item_unit = {
+            "description": u"футляри до державних нагород",
+            "classification": {
+                "scheme": u"CPV",
+                "id": u"44617100-9",
+                "description": u"Cartons"
+            },
+            "additionalClassifications": [
+                {
+                    "scheme": u"ДКПП",
+                    "id": u"17.21.1",
+                    "description": u"папір і картон гофровані, паперова й картонна тара"
+                }
+            ],
+            "quantity": 5,
+            "deliveryDate": {
+                "startDate": (now + timedelta(days=2)).isoformat(),
+                "endDate": (now + timedelta(days=5)).isoformat()
+            },
+            "deliveryAddress": {
+                "countryName": u"Україна",
+                "postalCode": "79000",
+                "region": u"м. Київ",
+                "locality": u"м. Київ",
+                "streetAddress": u"вул. Банкова 1"
+            },
+            "unit" : {
+                "code": "123123",
+                "value": {
+                    "amount": 2000,
+                }
+            }
+}
+
+now = datetime.now()
 test_tender_data = base_data.copy()
 del test_tender_data['enquiryPeriod']
 del test_tender_data['tenderPeriod']

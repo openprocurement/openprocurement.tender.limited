@@ -35,11 +35,13 @@ class Complaint(BaseComplaint):
 
 class Contract(BaseContract):
     items = ListType(ModelType(Item))
-
+    class Options:
+        roles = {
+            'edit': blacklist('id', 'documents', 'date', 'awardID', 'suppliers', 'contractID'),
+        }
     def validate_dateSigned(self, data, value):
         if value and value > get_now():
             raise ValidationError(u"Contract signature date can't be in the future")
-
 
 award_edit_role = blacklist('id', 'date', 'documents', 'complaints', 'complaintPeriod')
 award_create_role = blacklist('id', 'status', 'date', 'documents', 'complaints', 'complaintPeriod')
