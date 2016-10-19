@@ -7,7 +7,7 @@ from datetime import timedelta
 from openprocurement.api.models import get_now, SANDBOX_MODE
 from openprocurement.tender.limited.tests.base import (
     BaseTenderContentWebTest, test_tender_data, test_tender_negotiation_data,
-    test_tender_negotiation_quick_data, test_organization, item_unit)
+    test_tender_negotiation_quick_data, test_organization)
 
 
 class TenderContractResourceTest(BaseTenderContentWebTest):
