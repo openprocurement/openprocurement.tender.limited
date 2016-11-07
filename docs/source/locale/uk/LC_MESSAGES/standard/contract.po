@@ -147,4 +147,3 @@ msgstr "рядок, :ref:`date`"
 
 msgid "The date when the contract was changed or activated."
 msgstr "Дата, коли договір був змінений або активований."
-

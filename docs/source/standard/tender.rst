@@ -108,7 +108,7 @@ Schema
         
     Procurement Method of the Tender.
 
-:procurementMethodRationale:
+.. :procurementMethodRationale:
     string, multilingual
 
     Procurement Method Rationale of tender.

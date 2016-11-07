@@ -16,11 +16,9 @@ msgstr ""
 "Generated-By: Babel 2.2.0\n"
 "X-Generator: Lokalize 1.5\n"
 
-#: ../../source/overview.rst:4
 msgid "Overview"
 msgstr "Огляд"
 
-#: ../../source/overview.rst:6
 msgid ""
 "The Open Procurement API is the only interface to Open Procurement database "
 "that is core unit of `Open Procurement <http://openprocurement.org/>`_ "
@@ -30,11 +28,9 @@ msgstr ""
 " є основним елементом інфраструктури `Open Procurement "
 "<http://openprocurement.org/>`_."
 
-#: ../../source/overview.rst:17
 msgid "Negotiation procedure"
 msgstr "Переговорна процедура"
 
-#: ../../source/overview.rst:19
 msgid ""
 "`Negotiation procurement procedure` is a procedure according to which "
 "Procuring entity concludes a purchase agreement with a participant after "
@@ -44,15 +40,12 @@ msgstr ""
 " укладає договір про закупівлю з учасником після проведення переговорів з "
 "одним або кількома учасниками."
 
-#: ../../source/overview.rst:21
 msgid "Negotiation procedure stages:"
 msgstr "Етапи переговорної процедури:"
 
-#: ../../source/overview.rst:23
 msgid "Publication of the decision of intent to conduct negotiation procedure."
 msgstr "Публікація рішення про намір провести переговорну процедуру."
 
-#: ../../source/overview.rst:25
 msgid ""
 "The procuring entity places the announcement of intention to conduct "
 "negotiation procedure, describing the following procurement details: "
@@ -62,7 +55,6 @@ msgstr ""
 "якому зазначає інформацію про предмет закупівлі, очікувану вартість і "
 "очікуваний термін поставки."
 
-#: ../../source/overview.rst:27
 msgid ""
 "Interested suppliers can contact the Procuring entity if they want to "
 "participate in the negotiation procedure. The decision about negotiation "
@@ -72,11 +64,9 @@ msgstr ""
 "бажання прийняти участь в переговорній процедурі. Рішення про вибір "
 "учасників переговорів приймає Замовник."
 
-#: ../../source/overview.rst:29
 msgid "Awarding"
 msgstr "Визначення переможця"
 
-#: ../../source/overview.rst:31
 msgid ""
 "According to the results of conducted negotiations with participant(s) "
 "Procuring entity publishes the announcement of intention to conclude an "
@@ -86,17 +76,14 @@ msgstr ""
 "Замовник розміщує оголошення про намір укласти угоду з переможцем процедури,"
 " визначеним у ході переговорів."
 
-#: ../../source/overview.rst:33
 msgid "Conclusion of the Agreement"
 msgstr "Укладання угоди"
 
-#: ../../source/overview.rst:35
 msgid ""
 "The Procuring entity publishes purchase agreement and accompanying "
 "documents."
 msgstr "Замовник публікує угоду, укладену з переможцем, та інші документи."
 
-#: ../../source/overview.rst:53
 msgid ""
 "For general discussion use `Open Procurement General "
 "<https://groups.google.com/group/open-procurement-general>`_ maillist."
@@ -104,7 +91,6 @@ msgstr ""
 "Загальне обговорення відбувається через розсилку `Open Procurement General "
 "<https://groups.google.com/group/open-procurement-general>`_."
 
-#: ../../source/overview.rst:55
 msgid ""
 "General information, roadmap, and technical specifications for the Open "
 "Procurement project can be found at `openprocurement.org "
@@ -113,7 +99,6 @@ msgstr ""
 "Загальну інформацію, пояснення та технічні специфікації можна знайти на "
 "сайті `openprocurement.org <http://openprocurement.org/en>`_."
 
-#: ../../source/overview.rst:50
 msgid ""
 "You can leave feedback by raising a new issue on the `issue tracker "
 "<https://github.com/openprocurement/openprocurement.tender.limited/issues>`_"
@@ -123,17 +108,14 @@ msgstr ""
 "<https://github.com/openprocurement/openprocurement.tender.limited/issues>`_"
 " (реєстрація на GitHub обов’язкова)."
 
-#: ../../source/overview.rst:10
 msgid "This documentation covers three procedures:"
 msgstr "Ця документація стосується трьох процедур:"
 
-#: ../../source/overview.rst:12
 msgid "``reporting`` - reporting with no stand-still period"
 msgstr ""
 "``reporting`` - процедура звітування про укладений договір (без періоду "
 "очікування скарг)"
 
-#: ../../source/overview.rst:13
 msgid ""
 "``negotiation`` - negotiation procedure with 10 day stand-still before "
 "contract registration"
@@ -141,7 +123,6 @@ msgstr ""
 "``negotiation`` - переговорна процедура з десятиденним періодом очікування "
 "скарг перед реєстрацією угоди"
 
-#: ../../source/overview.rst:14
 msgid ""
 "``negotiation.quick`` - quick negotiation procedure with 5 day stand-still "
 "before contract registration"
@@ -149,16 +130,13 @@ msgstr ""
 "``negotiation.quick`` - переговорна процедура за нагальною потребою з "
 "п’ятиденним періодом очікування скарг перед реєстрацією угоди"
 
-#: ../../source/overview.rst:38
 msgid "Documentation of related packages"
 msgstr "Документація пов’язаних пакетів"
 
-#: ../../source/overview.rst:40
 msgid "`OpenProcurement API <http://api-docs.openprocurement.org/en/latest/>`_"
 msgstr ""
 "`OpenProcurement API <http://api-docs.openprocurement.org/uk_UA/latest/>`_"
 
-#: ../../source/overview.rst:42
 msgid ""
 "`Open tender procedure (OpenUA) <http://openua.api-"
 "docs.openprocurement.org/en/latest/>`_"
@@ -166,7 +144,6 @@ msgstr ""
 "`Відкриті торги (OpenUA) <http://openua.api-"
 "docs.openprocurement.org/uk/latest/>`_"
 
-#: ../../source/overview.rst:44
 msgid ""
 "`Open tender procedure with publication in English (OpenEU) <http://openeu"
 ".api-docs.openprocurement.org/en/latest/>`_"
@@ -174,7 +151,6 @@ msgstr ""
 "`Відкриті торги з публікацією англійською мовою (OpenEU) <http://openeu.api-"
 "docs.openprocurement.org/uk/latest/>`_"
 
-#: ../../source/overview.rst:46
 msgid ""
 "`Defense open tender <http://defense.api-"
 "docs.openprocurement.org/en/latest/>`_"
@@ -182,7 +158,6 @@ msgstr ""
 "`Процедура відкритих торгів для оборонних цілей <http://defense.api-"
 "docs.openprocurement.org/uk/latest/>`_"
 
-#: ../../source/overview.rst:48
 msgid ""
 "`Contracting API interface to OpenProcurement database <http://contracting"
 ".api-docs.openprocurement.org/en/latest/>`_"
