@@ -23,9 +23,17 @@ from openprocurement.api.models import ITender
 from openprocurement.api.models import Contract as BaseContract
 from openprocurement.api.models import ProcuringEntity as BaseProcuringEntity
 from openprocurement.tender.openua.models import Complaint as BaseComplaint
-from openprocurement.tender.openua.models import Item
+from openprocurement.tender.openua.models import Item as BaseItem
 from openprocurement.tender.openua.models import Tender as OpenUATender
 
+edit_items_role = whitelist('description', 'unit', 'PeriodEndRequired', 'Address', 'deliveryAddress', 'classification', 'additionalClassifications', 'deliveryDate')
+
+
+class Item(BaseItem):
+    class Options:
+        roles = {
+            'edit': whitelist('unit')
+        }
 
 class Complaint(BaseComplaint):
     class Options:
@@ -36,6 +44,10 @@ class Complaint(BaseComplaint):
 
 class Contract(BaseContract):
     items = ListType(ModelType(Item))
+    class Options:
+        roles = {
+            'edit': blacklist('id', 'documents', 'date', 'awardID', 'suppliers', 'contractID'),
+        }
 
     def validate_dateSigned(self, data, value):
         if value and value > get_now():
