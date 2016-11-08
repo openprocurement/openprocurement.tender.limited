@@ -22,9 +22,41 @@ from openprocurement.api.models import Cancellation as BaseCancellation
 from openprocurement.api.models import ITender
 from openprocurement.api.models import Contract as BaseContract
 from openprocurement.api.models import ProcuringEntity as BaseProcuringEntity
+from openprocurement.api.models import Unit as BaseUnit
+from openprocurement.api.models import Value as BaseValue
 from openprocurement.tender.openua.models import Complaint as BaseComplaint
-from openprocurement.tender.openua.models import Item
+from openprocurement.tender.openua.models import Item as BaseItem
 from openprocurement.tender.openua.models import Tender as OpenUATender
+
+
+class Value(BaseValue):
+    pass
+
+
+class Unit(BaseUnit):
+    value = ModelType(Value)
+
+    @serializable(serialized_name="value", serialize_when_none=False,
+                  type=ModelType(Value))
+    def unit_value(self):
+        tender_currency = self.__parent__.__parent__.__parent__.value.currency
+        tender_vat = self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
+        if self.value is not None and 'amount' in self.value:
+            value_amount = self.value.amount
+        else:
+            value_amount = None
+        return Value(dict(amount=value_amount, currency=tender_currency,
+                     valueAddedTaxIncluded=tender_vat))
+
+
+class Item(BaseItem):
+    unit = ModelType(Unit)
+
+    class Options:
+        roles = {
+         'edit': whitelist('unit')
+         }
+
 
 
 class Complaint(BaseComplaint):
@@ -37,6 +69,12 @@ class Complaint(BaseComplaint):
 class Contract(BaseContract):
     items = ListType(ModelType(Item))
 
+    class Options:
+        roles = {
+            'edit': blacklist('id', 'documents', 'date', 'awardID',
+                              'suppliers', 'contractID'),
+        }
+
     def validate_dateSigned(self, data, value):
         if value and value > get_now():
             raise ValidationError(u"Contract signature date can't be in the future")
@@ -46,6 +84,14 @@ award_edit_role = blacklist('id', 'date', 'documents', 'complaints', 'complaintP
 award_create_role = blacklist('id', 'status', 'date', 'documents', 'complaints', 'complaintPeriod')
 award_create_reporting_role = award_create_role + blacklist('qualified')
 award_edit_reporting_role = award_edit_role + blacklist('qualified')
+
+
+class Unit(BaseUnit):
+    pass
+
+
+class Item(Item):
+    unit = ModelType(Unit)
 
 
 class Award(Model):

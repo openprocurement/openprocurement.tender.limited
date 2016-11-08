@@ -3,6 +3,7 @@ import unittest
 import time
 from iso8601 import parse_date
 from datetime import timedelta
+from copy import deepcopy
 
 from openprocurement.api.models import get_now, SANDBOX_MODE
 from openprocurement.tender.limited.tests.base import (
@@ -1220,13 +1221,64 @@ class TenderContractDocumentResourceTest(BaseTenderContentWebTest):
         self.assertEqual(response.json['errors'][0]["description"],
                          "Can't update document in current (complete) tender status")
 
+    def test_item_unit_value(self):
+        response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
+        self.contract_id = response.json['data'][0]['id']
+        # item with unit.value for contract
+        test_item = deepcopy(test_tender_data["items"][0])
+        test_item["description"] = "fake data"
+        test_item["unit"] = {"value": {"amount": 1000}}
+        test_unit_value = test_item["unit"]["value"]
+
+        response = self.app.get('/tenders/{}'.format(self.tender_id))
+        self.assertEqual(response.status, '200 OK')
+
+        # Add change unit for contract
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [test_item]}})
+
+        item = response.json["data"]["items"][0]
+        self.assertNotEqual(test_item["description"], item["description"])
+        self.assertEqual(test_unit_value["amount"],
+                         item["unit"]["value"]["amount"])
+
+        # try to add second item in contract (now can only modified)
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{}, test_item]}}, status=422)
+
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+
+
 
 class TenderContractNegotiationDocumentResourceTest(TenderContractDocumentResourceTest):
     initial_data = test_tender_negotiation_data
 
+    def test_item_unit_value(self):
+        # can`t  update contract items unit value in this procedure
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(
+                self.tender_id, self.contract_id, self.tender_token),
+            {"data": {"items": [{"unit": {
+                "code": '500', "value": {"amount": '1000'}}}]}})
+        self.assertEqual('200 OK', response.status)
+        self.assertNotIn("value", response.json["data"]["items"][0])
 
 class TenderContractNegotiationLotDocumentResourceTest(TenderContractDocumentResourceTest):
     initial_data = test_tender_negotiation_data
+
+    def test_item_unit_value(self):
+        # can`t  update contract items unit value in this procedure
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(
+                self.tender_id, self.contract_id, self.tender_token),
+            {"data": {"items": [{"unit": {
+                "code": '500', "value": {"amount": '1000'}}}]}})
+        self.assertEqual('200 OK', response.status)
+        self.assertNotIn("value", response.json["data"]["items"][0])
 
     def create_award(self):
         self.app.patch_json('/tenders/{}?acc_token={}'.format(self.tender_id, self.tender_token),
@@ -1256,6 +1308,7 @@ class TenderContractNegotiationLotDocumentResourceTest(TenderContractDocumentRes
         self.award_id = award['id']
         response = self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
             self.tender_id, self.award_id, self.tender_token), {"data": {"status": "active"}})
+
 
 
 class TenderContractNegotiationQuickDocumentResourceTest(TenderContractNegotiationDocumentResourceTest):
