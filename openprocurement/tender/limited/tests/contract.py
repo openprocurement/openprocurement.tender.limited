@@ -3,12 +3,16 @@ import unittest
 import time
 from iso8601 import parse_date
 from datetime import timedelta
+from copy import deepcopy
 
 from openprocurement.api.models import get_now, SANDBOX_MODE
 from openprocurement.tender.limited.tests.base import (
-    BaseTenderContentWebTest, test_tender_data, test_tender_negotiation_data,
-    test_tender_negotiation_quick_data, test_organization, test_lots)
+    BaseTenderContentWebTest, test_tender_data as test_base_tender_data,
+    test_tender_negotiation_data, test_tender_negotiation_quick_data,
+    test_organization, test_lots)
 
+test_tender_data = deepcopy(test_base_tender_data)
+test_tender_data["items"].append(test_tender_data["items"][0])
 
 class TenderContractResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
@@ -433,10 +437,137 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
         self.assertEqual(contract['awardID'], award['id'])
         self.assertNotEqual(contract['awardID'], old_award_id)
 
+    def test_item_unit_value(self):
+        response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
+        self.contract_id = response.json['data'][0]['id']
+        contract = response.json['data'][0]
+
+        # item with unit.value for contract
+        test_item = deepcopy(test_tender_data["items"][0])
+        test_item["description"] = "fake data"
+        test_item["deliveryDate"] = {"startDate": get_now().isoformat(), "endDate": get_now().isoformat()}
+        test_item["quantity"] = 100
+        test_item["unit"] = {"code": 500, "value": {"amount": 1000}}
+        test_unit_value = test_item["unit"]["value"]
+
+        # Get contract
+        response = self.app.get('/tenders/{}/contracts/{}'.format(self.tender_id, self.contract_id))
+        unit0 = response.json["data"]["items"][0]["unit"]
+        unit1 = response.json["data"]["items"][1]["unit"]
+        self.assertEqual(response.status, "200 OK")
+        self.assertNotIn("value", unit0)
+        self.assertNotIn("value", unit1)
+
+        # Change unit for contract
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [test_item, {}]}})
+        self.assertEqual(response.status, "200 OK")
+        item = response.json["data"]["items"][0]
+        self.assertNotEqual(test_item["description"], item["description"])
+        self.assertNotEqual(test_item["quantity"], item["quantity"])
+        self.assertEqual(test_unit_value["amount"],
+                         item["unit"]["value"]["amount"])
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit":{"value": {"amount":2000}}}, {}]}})
+        unit0 = response.json["data"]["items"][0]["unit"]
+        unit1 = response.json["data"]["items"][1]["unit"]
+        self.assertEqual(2000, unit0["value"]["amount"])
+        self.assertNotIn("value", unit1)
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit":{"value": {"currency":"USD"}}}, {}]}})
+
+        unit = response.json["data"]["items"][0]["unit"]
+        self.assertEqual(response.status, "200 OK")
+        self.assertNotEqual("USD", unit["value"]["currency"])
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit":{"value": {"valueAddedTaxIncluded": False}}}, {}]}})
+
+        unit = response.json["data"]["items"][0]["unit"]
+        self.assertEqual(response.status, "200 OK")
+        self.assertNotEqual(False, unit["value"]["valueAddedTaxIncluded"])
+
+        # Change second item in contract (now can only modified)
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{}, test_item]}})
+        self.assertEqual(response.status, '200 OK')
+
+        response = self.app.get('/tenders/{}/contracts/{}'.format(self.tender_id, self.contract_id))
+        unit0 = response.json["data"]["items"][0]["unit"]
+        unit1 = response.json["data"]["items"][1]["unit"]
+        self.assertEqual(response.status, "200 OK")
+        self.assertEqual(2000, unit0["value"]["amount"])
+        self.assertEqual(contract["value"]["valueAddedTaxIncluded"], unit0["value"]["valueAddedTaxIncluded"])
+        self.assertEqual(contract["value"]["currency"], unit0["value"]["currency"])
+        self.assertEqual(1000, unit1["value"]["amount"])
+        self.assertEqual(contract["value"]["valueAddedTaxIncluded"], unit1["value"]["valueAddedTaxIncluded"])
+        self.assertEqual(contract["value"]["currency"], unit1["value"]["currency"])
+
+        # Try to add third item in contract
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{}, {}, test_item]}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+
+    def test_item_unit_currency_and_vat(self):
+        response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
+        self.contract_id = response.json['data'][0]['id']
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit":{"value": {"currency":"USD"}}}]}}, status=422)
+        self.assertEqual(response.status, "422 Unprocessable Entity")
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{}, {"unit":{"value": {"currency":"USD"}}}]}}, status=422)
+        self.assertEqual(response.status, "422 Unprocessable Entity")
+
+        #delete second item
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit":{"value": {"amount":3000}}}]}})
+        unit0 = response.json["data"]["items"][0]["unit"]
+        items = response.json["data"]["items"]
+        self.assertEqual(response.status, "200 OK")
+        self.assertEqual(len(items),1)
+        self.assertEqual(3000, unit0["value"]["amount"])
+
 
 class TenderNegotiationContractResourceTest(TenderContractResourceTest):
     initial_data = test_tender_negotiation_data
     stand_still_period_days = 10
+
+    def test_item_unit_currency_and_vat(self):
+        pass
+
+    def test_item_unit_value(self):
+        response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
+        self.contract_id = response.json['data'][0]['id']
+        # can`t  update contract items unit value in this procedure
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(
+                self.tender_id, self.contract_id, self.tender_token),
+            {"data": {"items": [{"unit": {
+                "code": '500', "value": {"amount": '1000'}}}]}})
+        self.assertEqual('200 OK', response.status)
+        self.assertNotIn("value", response.json["data"]["items"][0])
 
     def test_patch_tender_contract(self):
         response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))

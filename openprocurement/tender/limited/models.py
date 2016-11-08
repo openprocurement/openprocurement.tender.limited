@@ -2,7 +2,7 @@ from uuid import uuid4
 from zope.interface import implementer
 from pyramid.security import Allow
 from schematics.transforms import whitelist, blacklist
-from schematics.types import StringType, BaseType, MD5Type, BooleanType
+from schematics.types import StringType, BaseType, MD5Type, BooleanType, FloatType
 from schematics.types.compound import ModelType, ListType, DictType
 from schematics.types.serializable import serializable
 from schematics.exceptions import ValidationError
@@ -22,9 +22,39 @@ from openprocurement.api.models import Cancellation as BaseCancellation
 from openprocurement.api.models import ITender
 from openprocurement.api.models import Contract as BaseContract
 from openprocurement.api.models import ProcuringEntity as BaseProcuringEntity
+from openprocurement.api.models import Unit as BaseUnit
+from openprocurement.api.models import Value as BaseValue
 from openprocurement.tender.openua.models import Complaint as BaseComplaint
-from openprocurement.tender.openua.models import Item
+from openprocurement.tender.openua.models import Item as BaseItem
 from openprocurement.tender.openua.models import Tender as OpenUATender
+
+
+class Value(Model):
+    amount = FloatType(required=True, min_value=0)
+    @serializable
+    def currency(self):
+        if isinstance(self.__parent__.__parent__.__parent__.value, Value):
+            if self.amount is not None:
+                return self.__parent__.__parent__.__parent__.value.currency
+
+    @serializable
+    def valueAddedTaxIncluded(self):
+        if isinstance(self.__parent__.__parent__.__parent__.value, Value):
+            if self.amount is not None:
+                return self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
+
+
+class Unit(BaseUnit):
+    value = ModelType(Value)
+
+
+class Item(BaseItem):
+    unit = ModelType(Unit)
+
+    class Options:
+        roles = {
+         'edit': whitelist('unit')
+         }
 
 
 class Complaint(BaseComplaint):
@@ -37,6 +67,12 @@ class Complaint(BaseComplaint):
 class Contract(BaseContract):
     items = ListType(ModelType(Item))
 
+    class Options:
+        roles = {
+            'edit': blacklist('id', 'documents', 'date', 'awardID',
+                              'suppliers', 'contractID'),
+        }
+
     def validate_dateSigned(self, data, value):
         if value and value > get_now():
             raise ValidationError(u"Contract signature date can't be in the future")
@@ -46,6 +82,17 @@ award_edit_role = blacklist('id', 'date', 'documents', 'complaints', 'complaintP
 award_create_role = blacklist('id', 'status', 'date', 'documents', 'complaints', 'complaintPeriod')
 award_create_reporting_role = award_create_role + blacklist('qualified')
 award_edit_reporting_role = award_edit_role + blacklist('qualified')
+
+Value = BaseValue
+Unit = BaseUnit
+
+class Item(Item):
+    unit = ModelType(Unit)
+
+    class Options:
+        roles = {
+            'edit': blacklist()
+         }
 
 
 class Award(Model):
@@ -232,6 +279,7 @@ class Tender(SchematicsDocument, Model):
 
 ReportingTender = Tender
 
+Item = BaseItem
 
 class Award(ReportingAward):
 
