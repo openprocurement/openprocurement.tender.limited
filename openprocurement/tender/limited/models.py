@@ -37,12 +37,14 @@ class Unit(BaseUnit):
     def unit_value(self):
         tender_currency = self.__parent__.__parent__.__parent__.value.currency
         tender_vat = self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
-        if self.value is not None and 'amount' in self.value:
-            value_amount = self.value.amount
-        else:
-            value_amount = None
-        return Value(dict(amount=value_amount, currency=tender_currency,
+        if self.value is not None:
+            if 'amount' in self.value:
+                value_amount = self.value.amount
+            else:
+                value_amount = None
+            return Value(dict(amount=value_amount, currency=tender_currency,
                      valueAddedTaxIncluded=tender_vat))
+        return None
 
 
 class Item(BaseItem):
