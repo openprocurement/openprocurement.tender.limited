@@ -23,14 +23,10 @@ from openprocurement.api.models import ITender
 from openprocurement.api.models import Contract as BaseContract
 from openprocurement.api.models import ProcuringEntity as BaseProcuringEntity
 from openprocurement.api.models import Unit as BaseUnit
-from openprocurement.api.models import Value as BaseValue
+from openprocurement.api.models import Value
 from openprocurement.tender.openua.models import Complaint as BaseComplaint
 from openprocurement.tender.openua.models import Item as BaseItem
 from openprocurement.tender.openua.models import Tender as OpenUATender
-
-
-class Value(BaseValue):
-    pass
 
 
 class Unit(BaseUnit):
@@ -92,6 +88,11 @@ class Unit(BaseUnit):
 
 class Item(Item):
     unit = ModelType(Unit)
+
+    class Options:
+        roles = {
+            'edit': whitelist() 
+         }
 
 
 class Award(Model):
