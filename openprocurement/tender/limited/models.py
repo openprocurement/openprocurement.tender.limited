@@ -23,28 +23,34 @@ from openprocurement.api.models import ITender
 from openprocurement.api.models import Contract as BaseContract
 from openprocurement.api.models import ProcuringEntity as BaseProcuringEntity
 from openprocurement.api.models import Unit as BaseUnit
-from openprocurement.api.models import Value
+from openprocurement.api.models import Value as BaseValue
 from openprocurement.tender.openua.models import Complaint as BaseComplaint
 from openprocurement.tender.openua.models import Item as BaseItem
 from openprocurement.tender.openua.models import Tender as OpenUATender
 
+# contract:item:unit:value
+class Value(BaseValue):
+    currency = StringType(required=True, default=u'UAH', max_length=3, min_length=3)  # The currency in 3-letter ISO 4217 format.
+    valueAddedTaxIncluded = BooleanType(required=True, default=True)
+
+    @serializable(serialized_name="currency", serialize_when_none=False,
+                  type=StringType(currency))
+    def unit_currency(self):
+        if self.amount is not None:
+            return self.__parent__.__parent__.__parent__.__parent__.value.currency
+        return None
+    
+    @serializable(serialized_name="valueAddedTaxIncluded", serialize_when_none=False,
+                  type=StringType(valueAddedTaxIncluded))
+
+    def unit_vat(self):
+        if self.amount is not None:
+            return self.__parent__.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
+        return None
+
 
 class Unit(BaseUnit):
     value = ModelType(Value)
-
-    @serializable(serialized_name="value", serialize_when_none=False,
-                  type=ModelType(Value))
-    def unit_value(self):
-        tender_currency = self.__parent__.__parent__.__parent__.value.currency
-        tender_vat = self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
-        if self.value is not None:
-            if 'amount' in self.value:
-                value_amount = self.value.amount
-            else:
-                value_amount = None
-            return Value(dict(amount=value_amount, currency=tender_currency,
-                     valueAddedTaxIncluded=tender_vat))
-        return None
 
 
 class Item(BaseItem):
@@ -54,7 +60,6 @@ class Item(BaseItem):
         roles = {
          'edit': whitelist('unit')
          }
-
 
 
 class Complaint(BaseComplaint):
@@ -83,9 +88,24 @@ award_create_role = blacklist('id', 'status', 'date', 'documents', 'complaints',
 award_create_reporting_role = award_create_role + blacklist('qualified')
 award_edit_reporting_role = award_edit_role + blacklist('qualified')
 
+# value for tender award and tender:item  tender:award
+class Value(BaseValue):
+    currency = StringType(required=True, default=u'UAH', max_length=3, min_length=3)  # The currency in 3-letter ISO 4217 format.
+    valueAddedTaxIncluded = BooleanType(required=True, default=True)
+    
+    @serializable(serialized_name="currency", serialize_when_none=False,
+                  type=StringType(currency))
+    def unit_currency(self):
+        return self.currency
+
+    @serializable(serialized_name="valueAddedTaxIncluded", serialize_when_none=False,
+                  type=StringType(valueAddedTaxIncluded))
+    def unit_vat(self):
+        return self.valueAddedTaxIncluded
+        
 
 class Unit(BaseUnit):
-    pass
+    value = ModelType(Value)
 
 
 class Item(Item):

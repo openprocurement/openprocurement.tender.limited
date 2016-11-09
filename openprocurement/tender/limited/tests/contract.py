@@ -445,18 +445,19 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
 
         response = self.app.get('/tenders/{}'.format(self.tender_id))
         self.assertEqual(response.status, '200 OK')
-        print test_item
+        
         # Add change unit for contract
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
          {"data": {"items": [test_item]}})
+        
 
         item = response.json["data"]["items"][0]
         self.assertNotEqual(test_item["description"], item["description"])
         self.assertEqual(test_unit_value["amount"],
                          item["unit"]["value"]["amount"])
-
+     
         # try to add second item in contract (now can only modified)
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
