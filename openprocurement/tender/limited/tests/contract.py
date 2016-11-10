@@ -461,14 +461,14 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{"unit":{"value": {"currency":"UAH"}}}, {}]}}, status=422)
+         {"data": {"items": [{"unit": {"value": {"currency":"UAH"}}}, {}]}}, status=422)
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
 
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{"unit":{"value": {"currency":"currency"}}}, {}]}}, status=422)
+         {"data": {"items": [{"unit": {"value": {"valueAddedTaxIncluded": False}}}, {}]}}, status=422)
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
 
@@ -483,39 +483,81 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
         self.assertNotEqual(test_item["quantity"], item["quantity"])
         self.assertEqual(test_unit_value["amount"],
                          item["unit"]["value"]["amount"])
+        self.assertNotEqual(test_item["deliveryDate"], item["deliveryDate"])
 
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{"unit":{"value": {"amount":2000}}}, {}]}})
+         {"data": {"items": [{"unit": {"value": {"amount": 2000}}}, {}]}})
         unit0 = response.json["data"]["items"][0]["unit"]
         unit1 = response.json["data"]["items"][1]["unit"]
         self.assertEqual(2000, unit0["value"]["amount"])
         self.assertNotIn("value", unit1)
+        self.assertEqual(contract["value"]["currency"], unit0["value"]["currency"])
+        self.assertEqual(contract["value"]["valueAddedTaxIncluded"], unit0["value"]["valueAddedTaxIncluded"])
 
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{"unit":{"value": {"currency":"USD"}}}, {}]}})
+         {"data": {"items": [{"unit": {"value": {"currency": "USD"}}}, {}]}})
         unit = response.json["data"]["items"][0]["unit"]
         self.assertEqual(response.status, "200 OK")
+        self.assertEqual(response.content_type, 'application/json')
         self.assertEqual("USD", unit["value"]["currency"])
 
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{"unit":{"value": {"valueAddedTaxIncluded": False}}}, {}]}})
+         {"data": {"items": [{"unit": {"value": {"valueAddedTaxIncluded": False}}}, {}]}})
         unit = response.json["data"]["items"][0]["unit"]
         self.assertEqual(response.status, "200 OK")
+        self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(False, unit["value"]["valueAddedTaxIncluded"])
 
-        # Change second item in contract (now can only modified)
+        # Change second item in contract (can only modified unit)
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [test_item, test_item]}})
+         {"data": {"items": [{}, {"unit": {"value": {"currency": "USD"}}}]}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{}, {"unit": {"value": {"valueAddedTaxIncluded": False}}}]}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{}, {"unit": {"value": {"valueAddedTaxIncluded": True, "amount": 500}}}]}})
+        unit0 = response.json["data"]["items"][0]["unit"]
+        unit1 = response.json["data"]["items"][1]["unit"]
         self.assertEqual(response.status, '200 OK')
-        response = self.app.get('/tenders/{}/contracts/{}'.format(self.tender_id, self.contract_id))
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(2000, unit0["value"]["amount"])
+        self.assertEqual(False,unit0["value"]["valueAddedTaxIncluded"])
+        self.assertEqual(500, unit1["value"]["amount"])
+        self.assertEqual(True, unit1["value"]["valueAddedTaxIncluded"])
+
+        # Change unit1 and unit2 together
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit": {"value": {"valueAddedTaxIncluded": True, "amount": 1500, "currency": "UAH"}}},
+                             {"unit": {"value": {"valueAddedTaxIncluded": False, "amount": 2500, "currency": "USD"}}}]}})
+        unit0 = response.json["data"]["items"][0]["unit"]
+        unit1 = response.json["data"]["items"][1]["unit"]
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(1500, unit0["value"]["amount"])
+        self.assertEqual("UAH",unit0["value"]["currency"])
+        self.assertEqual(True,unit0["value"]["valueAddedTaxIncluded"])
+        self.assertEqual(2500, unit1["value"]["amount"])
+        self.assertEqual("USD",unit1["value"]["currency"])
+        self.assertEqual(False, unit1["value"]["valueAddedTaxIncluded"])
 
         # Try to add remove items
         response = self.app.patch_json(

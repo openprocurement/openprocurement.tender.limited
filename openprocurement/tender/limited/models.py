@@ -38,23 +38,27 @@ class Value(Model):
     def unit_currency(self):
         if self.currency is not None:
             return self.currency
-        if isinstance(self.__parent__, Unit):
-            if isinstance(self.__parent__.__parent__, Item):
-                if isinstance(self.__parent__.__parent__.__parent__, BaseContract):
-                    if isinstance(self.__parent__.__parent__.__parent__.value, Value):
-                        if self.amount is not None:
-                            return self.__parent__.__parent__.__parent__.value.currency
+        context = self.__parent__ if isinstance(self.__parent__, Model) else {}
+        while isinstance(context.__parent__, Model):
+            if isinstance(context.__parent__.__parent__, BaseContract):
+                context = context.__parent__.__parent__
+            else:
+                break
+            value = context.get("value", {})
+            return value.get("currency", None)
 
     @serializable(serialized_name="valueAddedTaxIncluded")
     def unit_valueAddedTaxIncluded(self):
         if self.valueAddedTaxIncluded is not None:
             return self.valueAddedTaxIncluded
-        if isinstance(self.__parent__, Unit):
-            if isinstance(self.__parent__.__parent__, Item):
-                if isinstance(self.__parent__.__parent__.__parent__, BaseContract):
-                    if isinstance(self.__parent__.__parent__.__parent__.value, Value):
-                        if self.amount is not None:
-                            return self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
+        context = self.__parent__ if isinstance(self.__parent__, Model) else {}
+        while isinstance(context.__parent__, Model):
+            if isinstance(context.__parent__.__parent__, BaseContract):
+                context = context.__parent__.__parent__
+            else:
+                break
+            value = context.get("value", {})
+            return value.get("valueAddedTaxIncluded", None)
 
 
 class Unit(BaseUnit):
