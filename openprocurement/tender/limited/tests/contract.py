@@ -458,6 +458,20 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
         self.assertNotIn("value", unit0)
         self.assertNotIn("value", unit1)
 
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit":{"value": {"currency":"UAH"}}}, {}]}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json(
+         '/tenders/{}/contracts/{}?acc_token={}'.format(
+             self.tender_id, self.contract_id, self.tender_token),
+         {"data": {"items": [{"unit":{"value": {"currency":"currency"}}}, {}]}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+
         # Change unit1
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
@@ -483,7 +497,6 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
          {"data": {"items": [{"unit":{"value": {"currency":"USD"}}}, {}]}})
-
         unit = response.json["data"]["items"][0]["unit"]
         self.assertEqual(response.status, "200 OK")
         self.assertEqual("USD", unit["value"]["currency"])
@@ -492,7 +505,6 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
          {"data": {"items": [{"unit":{"value": {"valueAddedTaxIncluded": False}}}, {}]}})
-
         unit = response.json["data"]["items"][0]["unit"]
         self.assertEqual(response.status, "200 OK")
         self.assertEqual(False, unit["value"]["valueAddedTaxIncluded"])
@@ -511,12 +523,14 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
              self.tender_id, self.contract_id, self.tender_token),
          {"data": {"items": [{}, {}, test_item]}}, status=403)
         self.assertEqual(response.status, '403 Forbidden')
+        self.assertIn("Number of items is", response.json['errors'][0]["description"])
 
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
          {"data": {"items": [{}]}}, status=403)
         self.assertEqual(response.status, '403 Forbidden')
+        self.assertIn("Number of items is", response.json['errors'][0]["description"])
 
 
 class TenderNegotiationContractResourceTest(TenderContractResourceTest):
