@@ -53,6 +53,7 @@ class Value(Model):
             if isinstance(self.__parent__.__parent__, Item):
                 if isinstance(self.__parent__.__parent__.__parent__, BaseContract):
                     if isinstance(self.__parent__.__parent__.__parent__.value, Value):
+                        if self.amount is not None:
                             return self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
 
 

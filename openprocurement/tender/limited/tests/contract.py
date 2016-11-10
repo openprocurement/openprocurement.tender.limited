@@ -458,7 +458,7 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
         self.assertNotIn("value", unit0)
         self.assertNotIn("value", unit1)
 
-        # Change unit for contract
+        # Change unit1
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
@@ -486,7 +486,7 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
 
         unit = response.json["data"]["items"][0]["unit"]
         self.assertEqual(response.status, "200 OK")
-        self.assertNotEqual("USD", unit["value"]["currency"])
+        self.assertEqual("USD", unit["value"]["currency"])
 
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
@@ -495,71 +495,44 @@ class TenderContractResourceTest(BaseTenderContentWebTest):
 
         unit = response.json["data"]["items"][0]["unit"]
         self.assertEqual(response.status, "200 OK")
-        self.assertNotEqual(False, unit["value"]["valueAddedTaxIncluded"])
+        self.assertEqual(False, unit["value"]["valueAddedTaxIncluded"])
 
         # Change second item in contract (now can only modified)
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{}, test_item]}})
+         {"data": {"items": [test_item, test_item]}})
         self.assertEqual(response.status, '200 OK')
-
         response = self.app.get('/tenders/{}/contracts/{}'.format(self.tender_id, self.contract_id))
-        unit0 = response.json["data"]["items"][0]["unit"]
-        unit1 = response.json["data"]["items"][1]["unit"]
-        self.assertEqual(response.status, "200 OK")
-        self.assertEqual(2000, unit0["value"]["amount"])
-        self.assertEqual(contract["value"]["valueAddedTaxIncluded"], unit0["value"]["valueAddedTaxIncluded"])
-        self.assertEqual(contract["value"]["currency"], unit0["value"]["currency"])
-        self.assertEqual(1000, unit1["value"]["amount"])
-        self.assertEqual(contract["value"]["valueAddedTaxIncluded"], unit1["value"]["valueAddedTaxIncluded"])
-        self.assertEqual(contract["value"]["currency"], unit1["value"]["currency"])
 
-        # Try to add third item in contract
+        # Try to add remove items
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{}, {}, test_item]}}, status=422)
-        self.assertEqual(response.status, '422 Unprocessable Entity')
-
-    def test_item_unit_currency_and_vat(self):
-        response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
-        self.contract_id = response.json['data'][0]['id']
+         {"data": {"items": [{}, {}, test_item]}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
 
         response = self.app.patch_json(
          '/tenders/{}/contracts/{}?acc_token={}'.format(
              self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{"unit":{"value": {"currency":"USD"}}}]}}, status=422)
-        self.assertEqual(response.status, "422 Unprocessable Entity")
-
-        response = self.app.patch_json(
-         '/tenders/{}/contracts/{}?acc_token={}'.format(
-             self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{}, {"unit":{"value": {"currency":"USD"}}}]}}, status=422)
-        self.assertEqual(response.status, "422 Unprocessable Entity")
-
-        #delete second item
-        response = self.app.patch_json(
-         '/tenders/{}/contracts/{}?acc_token={}'.format(
-             self.tender_id, self.contract_id, self.tender_token),
-         {"data": {"items": [{"unit":{"value": {"amount":3000}}}]}})
-        unit0 = response.json["data"]["items"][0]["unit"]
-        items = response.json["data"]["items"]
-        self.assertEqual(response.status, "200 OK")
-        self.assertEqual(len(items),1)
-        self.assertEqual(3000, unit0["value"]["amount"])
+         {"data": {"items": [{}]}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
 
 
 class TenderNegotiationContractResourceTest(TenderContractResourceTest):
     initial_data = test_tender_negotiation_data
     stand_still_period_days = 10
 
-    def test_item_unit_currency_and_vat(self):
-        pass
-
     def test_item_unit_value(self):
         response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
         self.contract_id = response.json['data'][0]['id']
+
+        # Get contract
+        response = self.app.get('/tenders/{}/contracts/{}'.format(self.tender_id, self.contract_id))
+        unit0 = response.json["data"]["items"][0]["unit"]
+        self.assertEqual(response.status, "200 OK")
+        self.assertNotIn("value", unit0)
+
         # can`t  update contract items unit value in this procedure
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(
