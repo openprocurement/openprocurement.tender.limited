@@ -31,17 +31,29 @@ from openprocurement.tender.openua.models import Tender as OpenUATender
 
 class Value(Model):
     amount = FloatType(required=True, min_value=0)
-    @serializable
-    def currency(self):
-        if isinstance(self.__parent__.__parent__.__parent__.value, Value):
-            if self.amount is not None:
-                return self.__parent__.__parent__.__parent__.value.currency
+    currency = StringType(max_length=3, min_length=3)
+    valueAddedTaxIncluded = BooleanType()
 
-    @serializable
-    def valueAddedTaxIncluded(self):
-        if isinstance(self.__parent__.__parent__.__parent__.value, Value):
-            if self.amount is not None:
-                return self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
+    @serializable(serialized_name="currency")
+    def unit_currency(self):
+        if self.currency is not None:
+            return self.currency
+        if isinstance(self.__parent__, Unit):
+            if isinstance(self.__parent__.__parent__, Item):
+                if isinstance(self.__parent__.__parent__.__parent__, BaseContract):
+                    if isinstance(self.__parent__.__parent__.__parent__.value, Value):
+                        if self.amount is not None:
+                            return self.__parent__.__parent__.__parent__.value.currency
+
+    @serializable(serialized_name="valueAddedTaxIncluded")
+    def unit_valueAddedTaxIncluded(self):
+        if self.valueAddedTaxIncluded is not None:
+            return self.valueAddedTaxIncluded
+        if isinstance(self.__parent__, Unit):
+            if isinstance(self.__parent__.__parent__, Item):
+                if isinstance(self.__parent__.__parent__.__parent__, BaseContract):
+                    if isinstance(self.__parent__.__parent__.__parent__.value, Value):
+                            return self.__parent__.__parent__.__parent__.value.valueAddedTaxIncluded
 
 
 class Unit(BaseUnit):
