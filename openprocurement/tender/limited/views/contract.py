@@ -112,11 +112,13 @@ class TenderAwardContractResource(BaseTenderAwardContractResource):
                 self.request.errors.add('body', 'data', 'Value amount should be less or equal to awarded amount ({})'.format(award.value.amount))
                 self.request.errors.status = 403
                 return
-
-        if len(data["items"]) != len(self.request.context["items"]):
-            self.request.errors.add('body', 'contract', 'Number of items is ({}) not ({})'.format(len(self.request.context["items"]), len(data["items"])))
-            self.request.errors.status = 403
-            return
+        if "items" in data:
+            if data["items"] is not None:
+                if len(data["items"]) != len(self.request.context["items"]):
+                    self.request.errors.add('body', 'contract', 'Number of items is ({}) not ({})'.format(
+                        len(self.request.context["items"]), len(data["items"])))
+                    self.request.errors.status = 403
+                    return
 
         contract_status = self.request.context.status
         apply_patch(self.request, save=False, src=self.request.context.serialize())
