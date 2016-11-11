@@ -36,27 +36,27 @@ class Value(Model):
 
     @serializable(serialized_name="currency")
     def unit_currency(self):
-        if self.currency is not None:
-            return self.currency
         context = self.__parent__ if isinstance(self.__parent__, Model) else {}
         while isinstance(context.__parent__, Model):
             if isinstance(context.__parent__.__parent__, BaseContract):
                 context = context.__parent__.__parent__
             else:
                 break
+            if self.currency is not None:
+                context = self.__parent__
             value = context.get("value", {})
             return value.get("currency", None)
 
     @serializable(serialized_name="valueAddedTaxIncluded")
     def unit_valueAddedTaxIncluded(self):
-        if self.valueAddedTaxIncluded is not None:
-            return self.valueAddedTaxIncluded
         context = self.__parent__ if isinstance(self.__parent__, Model) else {}
         while isinstance(context.__parent__, Model):
             if isinstance(context.__parent__.__parent__, BaseContract):
                 context = context.__parent__.__parent__
             else:
                 break
+            if self.valueAddedTaxIncluded is not None:
+                context = self.__parent__
             value = context.get("value", {})
             return value.get("valueAddedTaxIncluded", None)
 
