@@ -116,7 +116,7 @@ class TenderAwardContractResource(BaseTenderAwardContractResource):
             if data["items"] is not None:
                 if len(data["items"]) != len(self.request.context["items"]):
                     self.request.errors.add('body', 'contract', 'Number of items in contract during patch method must be ({}) not ({})'.format(
-                        len(data["items"]), len(self.request.context["items"])))
+                        len(self.request.context["items"]), len(data["items"])))
                     self.request.errors.status = 403
                     return
 
