@@ -101,16 +101,6 @@ award_create_reporting_role = award_create_role + blacklist('qualified')
 award_edit_reporting_role = award_edit_role + blacklist('qualified')
 
 Value = BaseValue
-Unit = BaseUnit
-
-class Item(Item):
-    unit = ModelType(Unit)
-
-    class Options:
-        roles = {
-            'edit': blacklist()
-         }
-
 
 class Award(Model):
     """ An award for the given procurement. There may be more than one award
@@ -296,7 +286,6 @@ class Tender(SchematicsDocument, Model):
 
 ReportingTender = Tender
 
-Item = BaseItem
 
 class Award(ReportingAward):
 
@@ -347,10 +336,6 @@ class Lot(Model):
         return Value(dict(amount=self.value.amount,
                           currency=self.__parent__.value.currency,
                           valueAddedTaxIncluded=self.__parent__.value.valueAddedTaxIncluded))
-
-
-class Contract(BaseContract):
-    items = ListType(ModelType(Item))
 
 
 @implementer(ITender)
