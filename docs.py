@@ -84,6 +84,7 @@ supplier = {'data':
         "date": "2016-01-14T18:07:00.628073+02:00",
         "id": "d373338bc3324f14b8b3d4af68922773",
         "status": "pending",
+        'qualified': True,
         "suppliers": [
             {
                 "address": {
