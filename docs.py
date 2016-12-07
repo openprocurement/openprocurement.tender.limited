@@ -347,6 +347,15 @@ class TenderLimitedResourceTest(BaseTenderWebTest):
             self.tender_id, self.contract_id, owner_token), {'data': {'period': period_dates["period"]}})
         self.assertEqual(response.status, '200 OK')
 
+        #### Setting contract items unit value
+
+        unit = {'unit': {'value': {'amount': 12}}}
+        with open('docs/source/tutorial/tender-contract-items-unit-value.http', 'w') as self.app.file_obj:
+            response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
+                self.tender_id, self.contract_id, owner_token),
+                {"data": {"items": [unit]}})
+        self.assertEqual(response.status, '200 OK')
+
         #### Uploading Contract documentation
         #
 
