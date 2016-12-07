@@ -197,7 +197,7 @@ Setting contract validity period is optional, but if it is needed, you can set a
 Setting contract value for unit
 -------------------------------
 
-Setting contract value for unit is optional.
+Additionally you can set unit value for contract item.
 
 .. include:: tutorial/tender-contract-items-unit-value.http
    :code:
