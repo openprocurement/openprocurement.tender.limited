@@ -74,12 +74,12 @@ Schema
 :subcontractingDetails:
     string
 
-    The text field of any length about subcontractor.
+    The text field of any length that contains information about subcontractor.
 
 :qualified:
     bool
 
-    Confirms the absence of grounds for refusal to participate in accordance with Article 17 of the Law of Ukraine "On Public Procurement".
+    Confirms that Procuring entity has no grounds to reject a participant in accordance with Article 17 of the Law of Ukraine "On Public Procurement".
 
 Award workflow
 --------------
