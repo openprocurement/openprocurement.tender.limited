@@ -213,6 +213,9 @@ class Tender(SchematicsDocument, Model):
 
     def initialize(self):
         self.date = get_now()
+        if self.procurementMethodType in ['negotiation', 'negotiation.quick'] and self.lots:
+            for lot in self.lots:
+                lot.date = get_now()
 
     def validate_procurementMethodDetails(self, *args, **kw):
         if self.mode and self.mode == 'test' and self.procurementMethodDetails and self.procurementMethodDetails != '':
