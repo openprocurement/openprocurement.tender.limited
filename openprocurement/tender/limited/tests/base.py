@@ -53,7 +53,7 @@ class BaseTenderWebTest(BaseBaseTenderWebTest):
     initial_data = test_tender_data
     initial_status = None
     initial_bids = None
-    initial_lots = None
+    initial_lots = test_lots
     relative_to = os.path.dirname(__file__)
 
     def setUp(self):
