@@ -25,9 +25,17 @@ from openprocurement.api.models import Value as BaseValue
 from openprocurement.api.models import Unit as BaseUnit
 from openprocurement.api.models import ProcuringEntity as BaseProcuringEntity
 from openprocurement.tender.openua.models import Complaint as BaseComplaint
-from openprocurement.tender.openua.models import Item
+from openprocurement.tender.openua.models import Item as BaseItem
 from openprocurement.tender.openua.models import Tender as OpenUATender
 
+edit_items_role = whitelist('description', 'unit', 'PeriodEndRequired', 'Address', 'deliveryAddress', 'classification', 'additionalClassifications', 'deliveryDate')
+
+
+class Item(BaseItem):
+    class Options:
+        roles = {
+            'edit': whitelist('unit')
+        }
 
 class Value(BaseValue):
     currency = StringType(max_length=3, min_length=3)
@@ -90,6 +98,10 @@ class Complaint(BaseComplaint):
 
 class Contract(BaseContract):
     items = ListType(ModelType(Item))
+    class Options:
+        roles = {
+            'edit': blacklist('id', 'documents', 'date', 'awardID', 'suppliers', 'contractID'),
+        }
 
     class Options:
         roles = {
