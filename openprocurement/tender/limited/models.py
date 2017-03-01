@@ -318,6 +318,11 @@ class Tender(ReportingTender):
     procuring_entity_kinds = ['general', 'special', 'defense']
     lots = ListType(ModelType(Lot), default=list(), validators=[validate_lots_uniq])
 
+    def initialize(self):
+        self.date = get_now()
+        if self.lots:
+            for lot in self.lots:
+                lot.date = get_now()
 NegotiationTender = Tender
 
 
@@ -330,5 +335,11 @@ class Tender(NegotiationTender):
     create_accreditation = 3
     edit_accreditation = 4
     procuring_entity_kinds = ['general', 'special', 'defense']
+
+    def initialize(self):
+        self.date = get_now()
+        if self.lots:
+            for lot in self.lots:
+                lot.date = get_now()
 
 NegotiationQuickTender = Tender
