@@ -9,7 +9,13 @@ from openprocurement.tender.core.utils import (
 )
 
 from openprocurement.api.validation import (
-    validate_file_update, validate_file_upload, validate_patch_document_data
+    validate_file_update, validate_file_upload, validate_patch_document_data,
+    ViewPermissionValidationError
+)
+
+from openprocurement.tender.limited.validation import (
+    validate_add_document_not_in_tender_active_status,
+    validate_update_document_not_in_tender_active_status
 )
 
 
@@ -36,19 +42,20 @@ class TenderDocumentResource(APIResource):
     @json_view(permission='upload_tender_documents', validators=(validate_file_upload,))
     def collection_post(self):
         """Tender Document Upload"""
-        if self.request.validated['tender_status'] != 'active':
-            self.request.errors.add('body', 'data', 'Can\'t add document in current ({}) tender status'.format(self.request.validated['tender_status']))
-            self.request.errors.status = 403
+        try:
+            validate_add_document_not_in_tender_active_status(self.request)
+        except ViewPermissionValidationError:
             return
-        document = upload_file(self.request)
-        self.request.validated['tender'].documents.append(document)
-        if save_tender(self.request):
-            self.LOGGER.info('Created tender document {}'.format(document.id),
-                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_document_create'}, {'document_id': document.id}))
-            self.request.response.status = 201
-            document_route = self.request.matched_route.name.replace("collection_", "")
-            self.request.response.headers['Location'] = self.request.current_route_url(_route_name=document_route, document_id=document.id, _query={})
-            return {'data': document.serialize("view")}
+        else:
+            document = upload_file(self.request)
+            self.request.validated['tender'].documents.append(document)
+            if save_tender(self.request):
+                self.LOGGER.info('Created tender document {}'.format(document.id),
+                                 extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_document_create'}, {'document_id': document.id}))
+                self.request.response.status = 201
+                document_route = self.request.matched_route.name.replace("collection_", "")
+                self.request.response.headers['Location'] = self.request.current_route_url(_route_name=document_route, document_id=document.id, _query={})
+                return {'data': document.serialize("view")}
 
     @json_view(permission='view_tender')
     def get(self):
@@ -67,29 +74,31 @@ class TenderDocumentResource(APIResource):
     @json_view(permission='upload_tender_documents', validators=(validate_file_update,))
     def put(self):
         """Tender Document Update"""
-        if self.request.validated['tender_status'] != 'active':
-            self.request.errors.add('body', 'data', 'Can\'t update document in current ({}) tender status'.format(self.request.validated['tender_status']))
-            self.request.errors.status = 403
+        try:
+            validate_update_document_not_in_tender_active_status(self.request)
+        except ViewPermissionValidationError:
             return
-        document = upload_file(self.request)
-        self.request.validated['tender'].documents.append(document)
-        if save_tender(self.request):
-            self.LOGGER.info('Updated tender document {}'.format(self.request.context.id),
-                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_document_put'}))
-            return {'data': document.serialize("view")}
+        else:
+            document = upload_file(self.request)
+            self.request.validated['tender'].documents.append(document)
+            if save_tender(self.request):
+                self.LOGGER.info('Updated tender document {}'.format(self.request.context.id),
+                                 extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_document_put'}))
+                return {'data': document.serialize("view")}
 
     @json_view(content_type="application/json", permission='upload_tender_documents', validators=(validate_patch_document_data,))
     def patch(self):
         """Tender Document Update"""
-        if self.request.validated['tender_status'] != 'active':
-            self.request.errors.add('body', 'data', 'Can\'t update document in current ({}) tender status'.format(self.request.validated['tender_status']))
-            self.request.errors.status = 403
+        try:
+            validate_update_document_not_in_tender_active_status(self.request)
+        except ViewPermissionValidationError:
             return
-        if apply_patch(self.request, src=self.request.context.serialize()):
-            update_file_content_type(self.request)
-            self.LOGGER.info('Updated tender document {}'.format(self.request.context.id),
-                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_document_patch'}))
-            return {'data': self.request.context.serialize("view")}
+        else:
+            if apply_patch(self.request, src=self.request.context.serialize()):
+                update_file_content_type(self.request)
+                self.LOGGER.info('Updated tender document {}'.format(self.request.context.id),
+                                 extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_document_patch'}))
+                return {'data': self.request.context.serialize("view")}
 
 
 @optendersresource(name='negotiation:Tender Documents',
