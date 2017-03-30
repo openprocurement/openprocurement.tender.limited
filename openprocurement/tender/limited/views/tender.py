@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-from openprocurement.tender.core.validation import validate_patch_tender_data
+from openprocurement.api.validation import ViewPermissionValidationError
+from openprocurement.tender.core.validation import (
+    validate_patch_tender_data,
+    validate_tender_status_update_in_terminated_status
+)
+
 from openprocurement.api.utils import (
     json_view, context_unpack
 )
@@ -7,10 +12,15 @@ from openprocurement.api.utils import (
 from openprocurement.tender.core.utils import (
     apply_patch, optendersresource
 )
+
 from openprocurement.tender.belowthreshold.views.tender import (
     TenderResource as BaseTenderResource
 )
 
+from openprocurement.tender.limited.validation import (
+    validate_chronograph_role,
+    validate_update_tender_with_awards
+)
 
 @optendersresource(name='reporting:Tender',
                    path='/tenders/{tender_id}',
@@ -68,26 +78,20 @@ class TenderResource(BaseTenderResource):
             }
 
         """
-        tender = self.request.validated['tender']
-        if self.request.authenticated_role != 'Administrator' and tender.status in ['complete', 'unsuccessful', 'cancelled']:
-            self.request.errors.add('body', 'data', 'Can\'t update tender in current ({}) status'.format(tender.status))
-            self.request.errors.status = 403
-            return
-        data = self.request.validated['data']
-        if self.request.authenticated_role == 'chronograph':
-            self.request.errors.add('body', 'data', 'Chronograph has no power over me!')
-            self.request.errors.status = 403
+        try:
+            tender = self.request.validated['tender']
+            validate_tender_status_update_in_terminated_status(self.request, tender)
+            data = self.request.validated['data']
+            validate_chronograph_role(self.request)
+            data = self.request.validated['data']
+            validate_update_tender_with_awards(self.request, tender)
+        except ViewPermissionValidationError:
             return
         else:
-            data = self.request.validated['data']
-            if tender.awards:
-                self.request.errors.add('body', 'data', 'Can\'t update tender when there is at least one award.')
-                self.request.errors.status = 403
-                return
             apply_patch(self.request, data=data, src=self.request.validated['tender_src'])
-        self.LOGGER.info('Updated tender {}'.format(tender.id),
-                         extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_patch'}))
-        return {'data': tender.serialize(tender.status)}
+            self.LOGGER.info('Updated tender {}'.format(tender.id),
+                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_patch'}))
+            return {'data': tender.serialize(tender.status)}
 
 
 @optendersresource(name='negotiation:Tender',
