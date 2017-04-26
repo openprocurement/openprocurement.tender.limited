@@ -61,6 +61,7 @@ class Value(BaseValue):
         value = context.get("value", {})
         return value.get("valueAddedTaxIncluded", None)
 
+
 class Unit(BaseUnit):
     value = ModelType(Value)
 
@@ -408,7 +409,7 @@ class Tender(ReportingTender):
         if self.lots:
             for lot in self.lots:
                 lot.date = get_now()
-                
+
 NegotiationTender = Tender
 
 
