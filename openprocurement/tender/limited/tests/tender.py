@@ -649,12 +649,14 @@ class TenderResourceTest(BaseTenderWebTest):
         self.assertEqual(tender_set - set(test_tender_data), set(
             [u'id', u'date', u'dateModified', u'owner', u'tenderID', u'status', u'procurementMethod']))
         self.assertIn(tender['id'], response.headers['Location'])
+        self.assertNotIn('transfer_token', tender)
 
         response = self.app.get('/tenders/{}'.format(tender['id']))
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(set(response.json['data']), set(tender))
         self.assertEqual(response.json['data'], tender)
+        self.assertNotIn('transfer_token', response.json['data'])
 
         response = self.app.post_json('/tenders?opt_jsonp=callback', {"data": self.initial_data})
         self.assertEqual(response.status, '201 Created')

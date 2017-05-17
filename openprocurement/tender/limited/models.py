@@ -235,7 +235,6 @@ class Tender(BaseTender):
     status = StringType(choices=['draft', 'active', 'complete', 'cancelled', 'unsuccessful'], default='active')
     mode = StringType(choices=['test'])
     cancellations = ListType(ModelType(Cancellation), default=list())
-
     create_accreditation = '13'
     edit_accreditation = 2
     procuring_entity_kinds = ['general', 'special', 'defense', 'other']
