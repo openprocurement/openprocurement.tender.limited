@@ -61,6 +61,7 @@ class Value(BaseValue):
         value = context.get("value", {})
         return value.get("valueAddedTaxIncluded", None)
 
+
 class Unit(BaseUnit):
     value = ModelType(Value)
 
@@ -72,6 +73,7 @@ class BaseItem(Item):
         roles = {
                  'edit_contract': whitelist('unit')
                 }
+
 
 class Item(BaseItem):
 
@@ -408,7 +410,7 @@ class Tender(ReportingTender):
         if self.lots:
             for lot in self.lots:
                 lot.date = get_now()
-                
+
 NegotiationTender = Tender
 
 
