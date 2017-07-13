@@ -7,6 +7,7 @@ from datetime import timedelta
 from copy import deepcopy
 from uuid import uuid4
 
+from openprocurement.api.tests.base import test_bids
 from openprocurement.api.models import get_now, SANDBOX_MODE
 from openprocurement.tender.limited.tests.base import (
     BaseTenderContentWebTest, test_tender_data, test_tender_negotiation_data,
@@ -1323,9 +1324,22 @@ class TenderContractNegotiationQuickLotDocumentResourceTest(TenderContractNegoti
     initial_data = test_tender_negotiation_quick_data
 
 
+def prepare_bids(init_bids):
+    """Make different identifier id for every bid"""
+    init_bids = deepcopy(init_bids)
+    base_identifier_id = int(init_bids[0]['tenderers'][0]['identifier']['id'])
+
+    for bid in init_bids:
+        base_identifier_id += 1
+        bid['tenderers'][0]['identifier']['id'] = '{:0=8}'.format(base_identifier_id)
+
+        return init_bids
+
+
 class TenderMergedContracts2LotsResourceTest(TenderNegotiationContractResourceTest):
     initial_status = 'active'
-    # initial_auth = ('Basic', ('broker', ''))
+    initial_bids = prepare_bids(test_bids)
+    initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
         '200': '200 OK',
@@ -1342,27 +1356,42 @@ class TenderMergedContracts2LotsResourceTest(TenderNegotiationContractResourceTe
         self.app.authorization = ('Basic', ('token', ''))
 
         awards_response = list()
-        lots_response = list()
-        for i in range(2):
-            lots_response.append(self.app.post_json(
-                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-                {'data': test_lots[0]}
+
+        for i in range(len(self.initial_lots)):
+            awards_response.append(self.app.post_json(
+                '/tenders/{}/awards'.format(self.tender_id), {
+                    'data':
+                        {
+                            'suppliers': self.initial_bids[0]['tenderers'],
+                            'status': 'pending',
+                            'bid_id': self.initial_bids[0]['id'],
+                            'value': self.initial_bids[0]['lotValues'][i]['value'],
+                            'lotID': self.initial_bids[0]['lotValues'][i]['relatedLot']
+                        }
+                }
             ).json['data'])
-
-        for lot in lots_response:
-            # lot = response.json['data']
-
-            awards_response.append(
-                self.app.post_json(
-                    '/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token),
-                    {'data': {
-                        'suppliers': [test_organization],
-                        'status': 'pending',
-                        'value': lot['value'],
-                        'lotID': lot['id']
-                    }}
-                ).json['data']
-            )
+        # awards_response = list()
+        # lots_response = list()
+        # for i in range(2):
+        #     lots_response.append(self.app.post_json(
+        #         '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+        #         {'data': test_lots[0]}
+        #     ).json['data'])
+        #
+        # for lot in lots_response:
+        #     # lot = response.json['data']
+        #
+        #     awards_response.append(
+        #         self.app.post_json(
+        #             '/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token),
+        #             {'data': {
+        #                 'suppliers': [test_organization],
+        #                 'status': 'pending',
+        #                 'value': lot['value'],
+        #                 'lotID': lot['id']
+        #             }}
+        #         ).json['data']
+        #     )
 
         self.app.authorization = authorization
 
