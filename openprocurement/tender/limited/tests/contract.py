@@ -1323,9 +1323,9 @@ class TenderContractNegotiationQuickLotDocumentResourceTest(TenderContractNegoti
     initial_data = test_tender_negotiation_quick_data
 
 
-class TenderMergedContracts2LotsResourceTest(TenderContractResourceTest):
+class TenderMergedContracts2LotsResourceTest(TenderNegotiationContractResourceTest):
     initial_status = 'active'
-    initial_auth = ('Basic', ('broker', ''))
+    # initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
         '200': '200 OK',
@@ -1866,9 +1866,9 @@ class TenderMergedContracts2LotsResourceTest(TenderContractResourceTest):
         )
 
 
-class TenderMergedContracts3LotsResourceTest(TenderContractResourceTest):
+class TenderMergedContracts3LotsResourceTest(TenderNegotiationContractResourceTest):
     initial_status = 'active'
-    initial_auth = ('Basic', ('broker', ''))
+    # initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
         '200': '200 OK',
@@ -2447,9 +2447,9 @@ class TenderMergedContracts3LotsResourceTest(TenderContractResourceTest):
         self.assertEqual(response.json['data']['dateSigned'], dateSigned)
 
 
-class TenderMergedContracts4LotsResourceTest(TenderContractResourceTest):
+class TenderMergedContracts4LotsResourceTest(TenderNegotiationContractResourceTest):
     initial_status = 'active'
-    initial_auth = ('Basic', ('broker', ''))
+    # initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
         '200': '200 OK',
