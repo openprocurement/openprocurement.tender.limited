@@ -195,6 +195,7 @@ class TenderNegotiationAwardContractResource(TenderAwardContractResource):
                              extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_contract_patch'}))
             return {'data': self.request.context.serialize()}
 
+
 @opresource(name='Tender Negotiation Quick Contracts',
             collection_path='/tenders/{tender_id}/contracts',
             procurementMethodType='negotiation.quick',
