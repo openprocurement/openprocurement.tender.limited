@@ -6,6 +6,7 @@ from openprocurement.api.utils import (
     opresource,
     json_view,
     context_unpack,
+    check_merged_contracts
 )
 from openprocurement.api.validation import (
     validate_contract_data,
@@ -178,6 +179,9 @@ class TenderNegotiationAwardContractResource(TenderAwardContractResource):
                 self.request.errors.add('body', 'data', 'Value amount should be less or equal to awarded amount ({})'.format(award.value.amount))
                 self.request.errors.status = 403
                 return
+
+        if check_merged_contracts(self.request) is not None:
+            return
 
         contract_status = self.request.context.status
         apply_patch(self.request, save=False, src=self.request.context.serialize())
