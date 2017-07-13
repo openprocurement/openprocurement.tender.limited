@@ -1324,7 +1324,7 @@ class TenderContractNegotiationQuickLotDocumentResourceTest(TenderContractNegoti
 
 
 class TenderMergedContracts2LotsResourceTest(TenderContractResourceTest):
-    initial_status = 'active.qualification'
+    initial_status = 'active'
     initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
@@ -1867,7 +1867,7 @@ class TenderMergedContracts2LotsResourceTest(TenderContractResourceTest):
 
 
 class TenderMergedContracts3LotsResourceTest(TenderContractResourceTest):
-    initial_status = 'active.qualification'
+    initial_status = 'active'
     initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
@@ -2448,7 +2448,7 @@ class TenderMergedContracts3LotsResourceTest(TenderContractResourceTest):
 
 
 class TenderMergedContracts4LotsResourceTest(TenderContractResourceTest):
-    initial_status = 'active.qualification'
+    initial_status = 'active'
     initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
