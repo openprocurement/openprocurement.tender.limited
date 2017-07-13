@@ -1336,7 +1336,7 @@ def prepare_bids(init_bids):
         return init_bids
 
 
-class TenderMergedContracts2LotsResourceTest(TenderNegotiationContractResourceTest):
+class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
     initial_bids = prepare_bids(test_bids)
     initial_auth = ('Basic', ('broker', ''))
@@ -1355,6 +1355,7 @@ class TenderMergedContracts2LotsResourceTest(TenderNegotiationContractResourceTe
         authorization = self.app.authorization
         self.app.authorization = ('Basic', ('token', ''))
 
+        # Create two awards
         awards_response = list()
 
         for i in range(len(self.initial_lots)):
@@ -1370,28 +1371,6 @@ class TenderMergedContracts2LotsResourceTest(TenderNegotiationContractResourceTe
                         }
                 }
             ).json['data'])
-        # awards_response = list()
-        # lots_response = list()
-        # for i in range(2):
-        #     lots_response.append(self.app.post_json(
-        #         '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-        #         {'data': test_lots[0]}
-        #     ).json['data'])
-        #
-        # for lot in lots_response:
-        #     # lot = response.json['data']
-        #
-        #     awards_response.append(
-        #         self.app.post_json(
-        #             '/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token),
-        #             {'data': {
-        #                 'suppliers': [test_organization],
-        #                 'status': 'pending',
-        #                 'value': lot['value'],
-        #                 'lotID': lot['id']
-        #             }}
-        #         ).json['data']
-        #     )
 
         self.app.authorization = authorization
 
@@ -1897,9 +1876,10 @@ class TenderMergedContracts2LotsResourceTest(TenderNegotiationContractResourceTe
         )
 
 
-class TenderMergedContracts3LotsResourceTest(TenderNegotiationContractResourceTest):
+class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
-    # initial_auth = ('Basic', ('broker', ''))
+    initial_bids = prepare_bids(test_bids)
+    initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
         '200': '200 OK',
@@ -1915,48 +1895,21 @@ class TenderMergedContracts3LotsResourceTest(TenderNegotiationContractResourceTe
         self.app.authorization = ('Basic', ('token', ''))
 
         # Create three awards
-        # awards_response = list()
-        # for i in range(3):
-        #     response = self.app.post_json(
-        #         '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-        #         {'data': test_lots[0]}
-        #     )
-        #
-        #     lot = response.json['data']
-        #
-        #     awards_response.append(
-        #         self.app.post_json(
-        #             '/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token),
-        #             {'data': {
-        #                 'suppliers': [test_organization],
-        #                 'status': 'pending',
-        #                 'value': lot['value'],
-        #                 'lotID': lot['id']
-        #             }}
-        #         ).json['data']
-        #     )
         awards_response = list()
-        lots_response = list()
-        for i in range(2):
-            lots_response.append(self.app.post_json(
-                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-                {'data': test_lots[0]}
+
+        for i in range(len(self.initial_lots)):
+            awards_response.append(self.app.post_json(
+                '/tenders/{}/awards'.format(self.tender_id), {
+                    'data':
+                        {
+                            'suppliers': self.initial_bids[0]['tenderers'],
+                            'status': 'pending',
+                            'bid_id': self.initial_bids[0]['id'],
+                            'value': self.initial_bids[0]['lotValues'][i]['value'],
+                            'lotID': self.initial_bids[0]['lotValues'][i]['relatedLot']
+                        }
+                }
             ).json['data'])
-
-        for lot in lots_response:
-            # lot = response.json['data']
-
-            awards_response.append(
-                self.app.post_json(
-                    '/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token),
-                    {'data': {
-                        'suppliers': [test_organization],
-                        'status': 'pending',
-                        'value': lot['value'],
-                        'lotID': lot['id']
-                    }}
-                ).json['data']
-            )
 
         self.app.authorization = authorization
 
@@ -2500,9 +2453,10 @@ class TenderMergedContracts3LotsResourceTest(TenderNegotiationContractResourceTe
         self.assertEqual(response.json['data']['dateSigned'], dateSigned)
 
 
-class TenderMergedContracts4LotsResourceTest(TenderNegotiationContractResourceTest):
+class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
-    # initial_auth = ('Basic', ('broker', ''))
+    initial_bids = prepare_bids(test_bids)
+    initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
         '200': '200 OK',
@@ -2518,48 +2472,21 @@ class TenderMergedContracts4LotsResourceTest(TenderNegotiationContractResourceTe
         self.app.authorization = ('Basic', ('token', ''))
 
         # Create four awards
-        # awards_response = list()
-        # for i in range(4):
-        #     response = self.app.post_json(
-        #         '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-        #         {'data': test_lots[0]}
-        #     )
-        #
-        #     lot = response.json['data']
-        #
-        #     awards_response.append(
-        #         self.app.post_json(
-        #             '/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token),
-        #             {'data': {
-        #                 'suppliers': [test_organization],
-        #                 'status': 'pending',
-        #                 'value': lot['value'],
-        #                 'lotID': lot['id']
-        #             }}
-        #         ).json['data']
-        #     )
         awards_response = list()
-        lots_response = list()
-        for i in range(2):
-            lots_response.append(self.app.post_json(
-                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-                {'data': test_lots[0]}
+
+        for i in range(len(self.initial_lots)):
+            awards_response.append(self.app.post_json(
+                '/tenders/{}/awards'.format(self.tender_id), {
+                    'data':
+                        {
+                            'suppliers': self.initial_bids[0]['tenderers'],
+                            'status': 'pending',
+                            'bid_id': self.initial_bids[0]['id'],
+                            'value': self.initial_bids[0]['lotValues'][i]['value'],
+                            'lotID': self.initial_bids[0]['lotValues'][i]['relatedLot']
+                        }
+                }
             ).json['data'])
-
-        for lot in lots_response:
-            # lot = response.json['data']
-
-            awards_response.append(
-                self.app.post_json(
-                    '/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token),
-                    {'data': {
-                        'suppliers': [test_organization],
-                        'status': 'pending',
-                        'value': lot['value'],
-                        'lotID': lot['id']
-                    }}
-                ).json['data']
-            )
 
         self.app.authorization = authorization
 
