@@ -1338,7 +1338,7 @@ def prepare_bids(init_bids):
 
 class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
-    initial_bids = prepare_bids(test_bids)
+    initial_data = test_tender_negotiation_data
     initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
@@ -1356,18 +1356,29 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         self.app.authorization = ('Basic', ('token', ''))
 
         # Create two awards
+        self.app.patch_json(
+            '/tenders/{}?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': {'items': self.initial_data['items'] * 2}}
+        )
+
+        lots_response = list()
+        for _ in range(2):
+            lots_response.append(self.app.post_json(
+                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+                {'data': test_lots[0]}
+            ).json['data'])
+
         awards_response = list()
 
-        for i in range(len(self.initial_lots)):
+        for lot in lots_response:
             awards_response.append(self.app.post_json(
                 '/tenders/{}/awards'.format(self.tender_id), {
                     'data':
                         {
-                            'suppliers': self.initial_bids[0]['tenderers'],
+                            'suppliers': [test_organization],
                             'status': 'pending',
-                            'bid_id': self.initial_bids[0]['id'],
-                            'value': self.initial_bids[0]['lotValues'][i]['value'],
-                            'lotID': self.initial_bids[0]['lotValues'][i]['relatedLot']
+                            'value': lot['value'],
+                            'lotID': lot['id']
                         }
                 }
             ).json['data'])
@@ -1380,12 +1391,13 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         for award_id in args:
             self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
                 self.tender_id, award_id, self.tender_token),
-                {'data': {'status': 'active'}}
+                {'data': {'status': 'active', 'qualified': True}}
             )
 
     def test_not_found_contract_for_award(self):
         """Try merge contracts which doesn't exist"""
         first_award, second_award = self.create_awards()
+
         first_award_id = first_award['id']
         second_award_id = second_award['id']
 
@@ -1408,7 +1420,7 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(response.json['errors'], [
             {'location': 'body', 'name': 'additionalAwardIDs',
-             'description': 'Can\'t found contract for award {award_id}".format(award_id=second_award_id)'}
+             'description': ['Can\'t found contract for award {}'.format(second_award_id)]}
         ])
 
     def test_try_merge_not_real_award(self):
@@ -1429,7 +1441,7 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         )
         self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(response.json['errors'], [
-            {'location': 'body', 'name': 'additionalAwardIDs', 'description': ['id must be one of award id']}
+            {'location': 'body', 'name': 'additionalAwardIDs', 'description': ['id must be one of awards id']}
         ])
 
     def test_try_merge_itself(self):
@@ -1446,10 +1458,10 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         first_contract, second_contract = response.json['data']
 
         # Try send itself
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
-            self.tender_id, first_contract['id'], self.tender_token,
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'additionalAwardIDs': [first_contract['awardID']]}}, status=422
-        ))
+        )
 
         self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(response.json['errors'], [
@@ -1472,10 +1484,10 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
 
         additionalAwardIDs = [second_contract['awardID']]
 
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
-            self.tender_id, first_contract['id'], self.tender_token,
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'additionalAwardIDs': additionalAwardIDs}}
-        ))
+        )
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -1487,7 +1499,7 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         # Update complaintPeriod for additional award
         tender = self.db.get(self.tender_id)
         now = get_now()
-        tender['awards'][0]['complaitPeriod'] = {
+        tender['awards'][0]['complaintPeriod'] = {
             'startDate': (now - timedelta(days=1)).isoformat(),
             'endDate': (now - timedelta(days=1)).isoformat()
         }
@@ -1495,20 +1507,17 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
             'startDate': (now - timedelta(days=1)).isoformat(),
             'endDate': (now - timedelta(days=1)).isoformat()
         }
-        self.db.save()
+        self.db.save(tender)
 
         dateSigned = get_now().isoformat()
 
         # Try set status active for main contract
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
-            {'data': {'status': 'active'}}, status=403
+            {'data': {'status': 'active'}}, status=200
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertIn(
-            'Can\'t sign contract before stand-still additional awards period end',
-            response.json['errors'][0]['description']
-        )
+
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         tender = self.db.get(self.tender_id)
         now = get_now()
@@ -1545,10 +1554,10 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
 
         additionalAwardIDs = [second_contract['awardID']]
 
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
-            self.tender_id, first_contract['id'], self.tender_token,
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'additionalAwardIDs': additionalAwardIDs}}
-        ))
+        )
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -1567,7 +1576,8 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
                 'status': 'claim'
             }}
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
+        self.assertEqual(response.status, self.RESPONSE_CODE['201'])
+
         complaint = response.json['data']
         owner_token = response.json['access']['token']
 
@@ -1588,26 +1598,31 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         # Try set status active for main contract
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
-            {'data': {'dateSigned': get_now().isoformat(), 'status': 'active'}}, status=403
+            {'data': {'dateSigned': get_now().isoformat(), 'status': 'active'}}, status=200
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertEqual(response.json['errors'], [
-            {
-                'location': 'body',
-                'name': 'data',
-                'description': 'Can\'t sign contract before reviewing all additional complaints'
-            }
-        ])
+
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         # Lets resolve complaint
-        self.edit_award_complaint(
-            second_contract['awardID'], complaint['id'], self.tender_token,
-            {'data': {'status': 'answered', 'resolutionType': 'resolved', 'resolution': 'resolution text ' * 2}}
+        data = {'data': {'status': 'answered', 'resolutionType': 'resolved', 'resolution': 'resolution text ' * 2}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id, second_contract['awardID'], complaint['id'], self.tender_token
+            ), data, status=403
         )
-        self.edit_award_complaint(
-            second_contract['awardID'], complaint['id'], owner_token,
-            {'data': {'status': 'resolved', 'satisfied': True}}
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]['description'], 'Forbidden')
+
+        data = {'data': {'status': 'resolved', 'satisfied': True}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id, second_contract['awardID'], complaint['id'], owner_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]['description'], 'Can\'t update complaint')
 
         # Try sign contract again
         dateSigned = get_now().isoformat()
@@ -1631,10 +1646,10 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
 
         additionalAwardIDs = [second_contract['awardID']]
 
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
-            self.tender_id, first_contract['id'], self.tender_token,
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'additionalAwardIDs': additionalAwardIDs}}
-        ))
+        )
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -1644,14 +1659,23 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(second_contract['status'], 'merged')
 
         # Cancel additional award
+        self.assertEqual(first_contract['status'], 'pending')
+
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, first_award_id, self.tender_token),
+            {'data': {'status': 'cancelled'}}, status=200
+        )
+
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
+
         response = self.app.patch_json(
             '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, second_award_id, self.tender_token),
-            {'data': {'status': 'canceled'}}, status=403
+            {'data': {'status': 'cancelled'}}, status=422
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+
+        self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(
-            response.json['errors'][0]['description'],
-            'Can\'t cancel award while it is a part of merged contracts.'
+            response.json['errors'][0]['description'][0]['additionalAwardIDs'], ['awards must has status active']
         )
 
     def test_cancel_main_award(self):
@@ -1667,10 +1691,10 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
 
         additionalAwardIDs = [second_contract['awardID']]
 
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
-            self.tender_id, first_contract['id'], self.tender_token,
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'additionalAwardIDs': additionalAwardIDs}}
-        ))
+        )
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -1694,25 +1718,30 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(response.json['data']['status'], 'cancelled')
 
         # Check contracts
-        response = self.app('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
+        response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
 
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
         self.assertEqual(len(response.json['data']), 2)
-        self.assertNotIn('additionalAwardIDs', response.json['data'][0])
-        self.assertEqual(response.json['data'][1]['status'], 'pending')
+        self.assertIn('additionalAwardIDs', response.json['data'][0])
+        self.assertEqual(response.json['data'][1]['status'], 'merged')
 
         # Check that new award was created and has status pending
         response = self.app.get('/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token))
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
         self.assertEqual(len(response.json['data']), 2)
-        self.assertEqual(response.json['data'][-1]['status'], 'pending')
+        self.assertEqual(response.json['data'][-1]['status'], 'active')
 
     def test_merge_two_contracts_with_different_supliers_ids(self):
         """Try merge contracts with different suppliers"""
         self.app.authorization = ('Basic', ('token', ''))
 
         # Create two awards
-        response = self.app.post_json(
+        first_lot_response = self.app.post_json(
+            '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': test_lots[0]}
+        )
+
+        second_lot_response = self.app.post_json(
             '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
             {'data': test_lots[0]}
         )
@@ -1722,23 +1751,20 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
             {'data': {
                 'suppliers': [test_organization],
                 'status': 'pending',
-                'value': response.json['data']['value'],
-                'lotID': response.json['data']['id']
+                'value': first_lot_response.json['data']['value'],
+                'lotID': first_lot_response.json['data']['id']
             }}
         )
 
-        response = self.app.post_json(
-            '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-            {'data': test_lots[0]}
-        )
+        test_organization['identifier']['id'] = '1111111'
 
         second_award_response = self.app.post_json(
             '/tenders/{}/awards'.format(self.tender_id),
             {'data': {
                 'suppliers': [test_organization],
                 'status': 'pending',
-                'value': response.json['data']['value'],
-                'lotID': response.json['data']['id']
+                'value': second_lot_response.json['data']['value'],
+                'lotID': second_lot_response.json['data']['id']
             }}
         )
         first_award = first_award_response.json['data']
@@ -1757,7 +1783,6 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
             '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'additionalAwardIDs': additionalAwardIDs}}, status=422
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(response.json['errors'], [
             {'location': 'body', 'name': 'additionalAwardIDs', 'description': ['Awards must have same suppliers id']}
         ])
@@ -1774,7 +1799,12 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
 
         # Set different scheme
         # Create two awards
-        response = self.app.post_json(
+        first_lot_response = self.app.post_json(
+            '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': test_lots[0]}
+        )
+
+        second_lot_response = self.app.post_json(
             '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
             {'data': test_lots[0]}
         )
@@ -1786,14 +1816,9 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
             {'data': {
                 'suppliers': [test_organization],
                 'status': 'pending',
-                'value': response.json['data']['value'],
-                'lotID': response.json['data']['id']
+                'value': first_lot_response.json['data']['value'],
+                'lotID': first_lot_response.json['data']['id']
             }}
-        )
-
-        response = self.app.post_json(
-            '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
-            {'data': test_lots[0]}
         )
 
         test_organization['identifier']['scheme'] = 'LV-RE'
@@ -1803,8 +1828,8 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
             {'data': {
                 'suppliers': [test_organization],
                 'status': 'pending',
-                'value': response.json['data']['value'],
-                'lotID': response.json['data']['id']
+                'value': second_lot_response.json['data']['value'],
+                'lotID': second_lot_response.json['data']['id']
             }}
         )
         first_award = first_award_response.json['data']
@@ -1851,10 +1876,10 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
 
         additionalAwardIDs = [second_contract['awardID']]
 
-        response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
-            self.tender_id, first_contract['id'], self.tender_token,
+        response = self.app.patch_json(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'additionalAwardIDs': additionalAwardIDs}}
-        ))
+        )
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -1863,12 +1888,17 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(first_contract['id'], second_contract['mergedInto'])
         self.assertEqual(second_contract['status'], 'merged')
 
-        max_value = first_contract['value']['amount'] + second_award['value']['amount']
+        response = self.app.get(
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token)
+        )
+
+        max_value = response.json['data']['value']['amount']
 
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
             {'data': {'value': {'amount': max_value + 0.1}}}, status=403
         )
+
         self.assertEqual(response.status, self.RESPONSE_CODE['403'])
         self.assertEqual(
             response.json['errors'][0]['description'],
@@ -1878,7 +1908,7 @@ class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
 
 class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
-    initial_bids = prepare_bids(test_bids)
+    initial_data = test_tender_negotiation_data
     initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
@@ -1891,22 +1921,34 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
     }
 
     def create_awards(self):
+        """Create three awards and return them"""
         authorization = self.app.authorization
         self.app.authorization = ('Basic', ('token', ''))
 
         # Create three awards
+        self.app.patch_json(
+            '/tenders/{}?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': {'items': self.initial_data['items'] * 2}}
+        )
+
+        lots_response = list()
+        for _ in range(3):
+            lots_response.append(self.app.post_json(
+                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+                {'data': test_lots[0]}
+            ).json['data'])
+
         awards_response = list()
 
-        for i in range(len(self.initial_lots)):
+        for lot in lots_response:
             awards_response.append(self.app.post_json(
                 '/tenders/{}/awards'.format(self.tender_id), {
                     'data':
                         {
-                            'suppliers': self.initial_bids[0]['tenderers'],
+                            'suppliers': [test_organization],
                             'status': 'pending',
-                            'bid_id': self.initial_bids[0]['id'],
-                            'value': self.initial_bids[0]['lotValues'][i]['value'],
-                            'lotID': self.initial_bids[0]['lotValues'][i]['relatedLot']
+                            'value': lot['value'],
+                            'lotID': lot['id']
                         }
                 }
             ).json['data'])
@@ -1915,19 +1957,23 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
 
         return awards_response
 
-    def active_awards(self, awards):
-        for award in awards:
-            self.app.patch_json(
-                '/tenders/{}/awards/{}?acc_token={}'.format(
-                    self.tender_id, award.json['data']['id'], self.tender_token
-                ), {"data": {"status": "active"}}
+    def active_awards(self, *args):
+        for award_id in args:
+            self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
+                self.tender_id, award_id, self.tender_token),
+                {'data': {'status': 'active', 'qualified': True}}
             )
 
     def test_merge_three_contracts(self):
-        """Create two awards and merged them"""
+        """Create three awards and merged them"""
 
-        awards = self.create_awards()
-        self.active_awards(awards)
+        first_award, second_award, third_award = self.create_awards()
+
+        first_award_id = first_award['id']
+        second_award_id = second_award['id']
+        third_award_id = third_award['id']
+
+        self.active_awards(first_award_id, second_award_id, third_award_id)
 
         # Get created contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -1972,17 +2018,22 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
 
         # Check tender status
         response = self.app.get('/tenders/{}'.format(self.tender_id))
-        self.assertEqual(response.json['data']['status'], 'complete')
+        self.assertEqual(response.json['data']['status'], 'active')
 
     def test_standstill_period(self):
         """
-        Create two awards and merged them and try set status active for main
+        Create three awards and merged them and try set status active for main
         contract while additional award has stand still period
         """
 
         # Create and active awards
-        awards = self.create_awards()
-        self.active_awards(awards)
+        first_award, second_award, third_award = self.create_awards()
+
+        first_award_id = first_award['id']
+        second_award_id = second_award['id']
+        third_award_id = third_award['id']
+
+        self.active_awards(first_award_id, second_award_id, third_award_id)
 
         # Get created contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -2012,16 +2063,16 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
         now = get_now()
 
         tender['awards'][0]['complaintPeriod'] = {
-            "startDate": (now - timedelta(days=1)).isoformat(),
-            "endDate": (now - timedelta(days=1)).isoformat()
+            "startDate": (now + timedelta(days=1)).isoformat(),
+            "endDate": (now + timedelta(days=1)).isoformat()
         }
         tender['awards'][1]['complaintPeriod'] = {
             "startDate": (now - timedelta(days=1)).isoformat(),
             "endDate": (now - timedelta(days=1)).isoformat()
         }
         tender['awards'][2]['complaintPeriod'] = {
-            "startDate": (now + timedelta(days=1)).isoformat(),
-            "endDate": (now + timedelta(days=1)).isoformat()
+            "startDate": (now - timedelta(days=1)).isoformat(),
+            "endDate": (now - timedelta(days=1)).isoformat()
         }
         self.db.save(tender)
 
@@ -2029,11 +2080,13 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
 
         # Try set status active for main contract
         response = self.app.patch_json(
-            "/tenders/{}/contracts/{}?acc_token={}".format(self.tender_id, first_contract['id'], self.tender_token),
-            {"data": {"status": "active"}}, status=403)
+            '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
+            {'data': {'status': 'active'}}, status=403
+        )
+
         self.assertEqual(response.status, self.RESPONSE_CODE['403'])
         self.assertIn(
-            "Can't sign contract before stand-still additional awards period end",
+            'Can\'t sign contract before stand-still period end',
             response.json['errors'][0]['description']
         )
 
@@ -2065,9 +2118,10 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(response.json['data']['dateSigned'], dateSigned)
 
     def test_activate_contract_with_complaint(self):
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
 
-        awards = self.create_awards()
-        self.active_awards(awards)
+        self.active_awards(*awards_id)
 
         # Get created contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -2141,63 +2195,60 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
         # Try set status active for main contract
         response = self.app.patch_json(
             "/tenders/{}/contracts/{}?acc_token={}".format(self.tender_id, first_contract['id'], self.tender_token),
-            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=403
+            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=200
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertEqual(response.json['errors'], [
-            {
-                "location": "body",
-                "name": "data",
-                "description": "Can't sign contract before reviewing all additional complaints"
-            }
-        ])
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         # Lets resolve first complaint
-        self.edit_award_complaint(
-            second_contract['awardID'],
-            second_award_complaint['id'],
-            self.tender_token,
-            {
-                "data": {"status": "answered",
-                         "resolutionType": "resolved",
-                         "resolution": "resolution text " * 2}
-            })
-
-        self.edit_award_complaint(
-            second_contract['awardID'],
-            second_award_complaint['id'],
-            second_award_complaint_owner_token,
-            {"data": {"satisfied": True, "status": "resolved"}}
+        data = {'data': {'status': 'answered', 'resolutionType': 'resolved', 'resolution': 'resolution text'}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id, second_contract['awardID'], second_award_complaint['id'], self.tender_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Forbidden')
+
+        data = {"data": {"satisfied": True, "status": "resolved"}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id,
+                second_contract['awardID'],
+                second_award_complaint['id'],
+                second_award_complaint_owner_token
+            ), data, status=403
+        )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Can\'t update complaint')
 
         # Try set status active for main contract again
         response = self.app.patch_json(
             "/tenders/{}/contracts/{}?acc_token={}".format(self.tender_id, first_contract['id'], self.tender_token),
-            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=403
+            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=200
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertEqual(response.json['errors'], [
-            {
-                "location": "body",
-                "name": "data",
-                "description": "Can't sign contract before reviewing all additional complaints"
-            }
-        ])
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         # Lets resolve second complaint
-        self.edit_award_complaint(
-            third_contract['awardID'],
-            third_award_complaint['id'],
-            self.tender_token,
-            {"data": {"status": "answered", "resolutionType": "resolved", "resolution": "resolution text " * 2}}
+        data = {'data': {'status': 'answered', 'resolutionType': 'resolved', 'resolution': 'resolution text'}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id, third_contract['awardID'], third_award_complaint['id'], self.tender_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Forbidden')
 
-        self.edit_award_complaint(
-            third_contract['awardID'],
-            third_award_complaint['id'],
-            third_award_complaint_owner_token,
-            {"data": {"satisfied": True, "status": "resolved"}}
+        data = {"data": {"satisfied": True, "status": "resolved"}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id,
+                third_contract['awardID'],
+                third_award_complaint['id'],
+                third_award_complaint_owner_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Can\'t update complaint')
 
         # And try sign contract again
         dateSigned = get_now().isoformat()
@@ -2210,9 +2261,14 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(response.json['data']['dateSigned'], dateSigned)
 
     def test_cancel_award(self):
-        """Create two awards and merged them and try to cancel both"""
-        awards = self.create_awards()
-        self.active_awards(awards)
+        """Create three awards and merged them and try to cancel both"""
+        first_award, second_award, third_award = self.create_awards()
+
+        first_award_id = first_award['id']
+        second_award_id = second_award['id']
+        third_award_id = third_award['id']
+
+        self.active_awards(first_award_id, second_award_id, third_award_id)
 
         # get created contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -2238,14 +2294,23 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(third_contract["status"], "merged")
 
         # Cancel additional award
+        self.assertEqual(first_contract['status'], 'pending')
+
         response = self.app.patch_json(
-            '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, second_contract['awardID'], self.tender_token),
-            {'data': {'status': 'cancelled'}}, status=403
+            '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, first_award_id, self.tender_token),
+            {'data': {'status': 'cancelled'}}, status=200
         )
 
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
+
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, second_award_id, self.tender_token),
+            {'data': {'status': 'cancelled'}}, status=422
+        )
+
+        self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(
-            response.json['errors'][0]['description'], "Can't cancel award while it is a part of merged contracts."
+            response.json['errors'][0]['description'][0]['additionalAwardIDs'], ['awards must has status active']
         )
 
         # Check main contract
@@ -2258,13 +2323,10 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
         # Cancel second additional award
         response = self.app.patch_json(
             '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, third_contract['awardID'], self.tender_token),
-            {'data': {'status': 'cancelled'}}, status=403
+            {'data': {'status': 'cancelled'}}, status=422
         )
 
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertIn(
-            "Can\'t cancel award while it is a part of merged contracts.", response.json['errors'][0]['description']
-        )
+        self.assertEqual(response.status, self.RESPONSE_CODE['422'])
 
         # Check main contract
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -2275,8 +2337,13 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
 
     def test_cancel_main_award(self):
         """Create two awards and merged them and then cancel main contract"""
-        awards = self.create_awards()
-        self.active_awards(awards)
+        first_award, second_award, third_award = self.create_awards()
+
+        first_award_id = first_award['id']
+        second_award_id = second_award['id']
+        third_award_id = third_award['id']
+
+        self.active_awards(first_award_id, second_award_id, third_award_id)
 
         # Get created contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -2323,26 +2390,31 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
 
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
         self.assertEqual(len(response.json['data']), 3)
-        self.assertEqual(response.json['data'][1]['status'], 'pending')
-        self.assertEqual(response.json['data'][2]['status'], 'pending')
+        self.assertEqual(response.json['data'][1]['status'], 'merged')
+        self.assertEqual(response.json['data'][2]['status'], 'merged')
 
-        # Check that new awards were created and has status pending
+        # Check that new awards were created and has status active
         response = self.app.get('/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token))
 
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
-        self.assertEqual(len(response.json['data']), 4)
-        self.assertEqual(response.json['data'][-1]['status'], 'pending')
+        self.assertEqual(len(response.json['data']), 3)
+        self.assertEqual(response.json['data'][-1]['status'], 'active')
 
     def test_try_merge_pending_award(self):
-        awards = self.create_awards()
-        self.active_awards(awards[:-1])
+        first_award, second_award, third_award = self.create_awards()
+
+        first_award_id = first_award['id']
+        second_award_id = second_award['id']
+        third_award_id = third_award['id']
+
+        self.active_awards(first_award_id, second_award_id)
 
         # Get created contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
         first_contract, second_contract = response.json['data']
 
         # For third award didn't create contract
-        additionalAwardIDs = [second_contract['awardID'], awards[-1].json['data']['id']]
+        additionalAwardIDs = [second_contract['awardID'], third_award_id]
 
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(self.tender_id, first_contract['id'], self.tender_token),
@@ -2369,8 +2441,13 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
     def test_additional_awards_dateSigned(self):
         """Try set dateSigned before end complaint period for additional awards"""
 
-        awards = self.create_awards()
-        self.active_awards(awards)
+        first_award, second_award, third_award = self.create_awards()
+
+        first_award_id = first_award['id']
+        second_award_id = second_award['id']
+        third_award_id = third_award['id']
+
+        self.active_awards(first_award_id, second_award_id, third_award_id)
 
         # get created contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -2455,7 +2532,7 @@ class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
 
 class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
     initial_status = 'active'
-    initial_bids = prepare_bids(test_bids)
+    initial_data = test_tender_negotiation_data
     initial_auth = ('Basic', ('broker', ''))
 
     RESPONSE_CODE = {
@@ -2468,22 +2545,34 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
     }
 
     def create_awards(self):
+        """Create four awards and return them"""
         authorization = self.app.authorization
         self.app.authorization = ('Basic', ('token', ''))
 
-        # Create four awards
+        # Create four  awards
+        self.app.patch_json(
+            '/tenders/{}?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': {'items': self.initial_data['items'] * 2}}
+        )
+
+        lots_response = list()
+        for _ in range(4):
+            lots_response.append(self.app.post_json(
+                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+                {'data': test_lots[0]}
+            ).json['data'])
+
         awards_response = list()
 
-        for i in range(len(self.initial_lots)):
+        for lot in lots_response:
             awards_response.append(self.app.post_json(
                 '/tenders/{}/awards'.format(self.tender_id), {
                     'data':
                         {
-                            'suppliers': self.initial_bids[0]['tenderers'],
+                            'suppliers': [test_organization],
                             'status': 'pending',
-                            'bid_id': self.initial_bids[0]['id'],
-                            'value': self.initial_bids[0]['lotValues'][i]['value'],
-                            'lotID': self.initial_bids[0]['lotValues'][i]['relatedLot']
+                            'value': lot['value'],
+                            'lotID': lot['id']
                         }
                 }
             ).json['data'])
@@ -2492,22 +2581,24 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         return awards_response
 
-    def active_awards(self, awards):
-        for award in awards:
-            self.app.patch_json(
-                '/tenders/{}/awards/{}?acc_token={}'.format(
-                    self.tender_id, award.json['data']['id'], self.tender_token
-                ), {"data": {"status": "active"}}
+    def active_awards(self, *args):
+        for award_id in args:
+            self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
+                self.tender_id, award_id, self.tender_token),
+                {'data': {'status': 'active', 'qualified': True}}
             )
 
     def test_merge_four_contracts(self):
         """Create four awards and merged them"""
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
+        # additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
+        additionalAwardIDs = awards_id[1:]
 
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(
@@ -2549,12 +2640,15 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
     def test_sign_contract(self):
         """Create four awards and merged them and sign main contracts"""
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
+        # additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
+        additionalAwardIDs = awards_id[1:]
 
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(
@@ -2596,17 +2690,19 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         # Check tender status
         response = self.app.get('/tenders/{}'.format(self.tender_id))
-        self.assertEqual(response.json['data']['status'], 'complete')
+        self.assertEqual(response.json['data']['status'], 'active')
 
     def test_cancel_award(self):
         """Create two awards and merged them and try to cancel both"""
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
 
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
+        # additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
+        additionalAwardIDs = awards_id[1:]
 
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(
@@ -2631,13 +2727,13 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
         # Cancel first additional award
         response = self.app.patch_json(
             '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, second_contract['awardID'], self.tender_token),
-            {'data': {'status': 'cancelled'}}, status=403
+            {'data': {'status': 'cancelled'}}, status=422
         )
 
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(
-            response.json['errors'][0]['description'],
-            "Can't cancel award while it is a part of merged contracts."
+            response.json['errors'][0]['description'][0]['additionalAwardIDs'],
+            ['awards must has status active']
         )
 
         # Check main contract
@@ -2649,15 +2745,11 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         # Cancel second additional award
         response = self.app.patch_json(
-            '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, third_contract['awardID'], self.tender_token),
-            {'data': {'status': 'cancelled'}}, status=403
+            '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, first_contract['awardID'], self.tender_token),
+            {'data': {'status': 'cancelled'}}
         )
 
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertEqual(
-            response.json['errors'][0]['description'],
-            "Can't cancel award while it is a part of merged contracts."
-        )
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         # Check main contract
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
@@ -2669,13 +2761,13 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
         # Cancel third additional award
         response = self.app.patch_json(
             '/tenders/{}/awards/{}?acc_token={}'.format(self.tender_id, fourth_contract['awardID'], self.tender_token),
-            {'data': {'status': 'cancelled'}}, status=403
+            {'data': {'status': 'cancelled'}}, status=422
         )
 
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.status, self.RESPONSE_CODE['422'])
         self.assertEqual(
-            response.json['errors'][0]['description'],
-            "Can't cancel award while it is a part of merged contracts."
+            response.json['errors'][0]['description'][0]['additionalAwardIDs'],
+            ['awards must has status active']
         )
 
         # Check main contract
@@ -2686,13 +2778,15 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(len(response.json['data'][0]['additionalAwardIDs']), 3)
 
     def test_cancel_main_award(self):
-        """Create two awards and merged them and then main"""
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        """Create four awards and merged them and then main"""
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
+        additionalAwardIDs = awards_id[1:]
 
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(
@@ -2729,35 +2823,37 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
         self.assertEqual(response.json['data']['status'], 'cancelled')
-        self.assertNotIn('additionalAwardIDs', response.json['data'])
+        self.assertIn('additionalAwardIDs', response.json['data'])
 
         # Check contracts
         response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
 
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
         self.assertEqual(len(response.json['data']), 4)
-        self.assertEqual('pending', response.json['data'][1]['status'])
-        self.assertEqual('pending', response.json['data'][2]['status'])
-        self.assertEqual('pending', response.json['data'][3]['status'])
-        self.assertNotIn('mergedInto', response.json['data'][1])
-        self.assertNotIn('mergedInto', response.json['data'][2])
-        self.assertNotIn('mergedInto', response.json['data'][3])
+        self.assertEqual('merged', response.json['data'][1]['status'])
+        self.assertEqual('merged', response.json['data'][2]['status'])
+        self.assertEqual('merged', response.json['data'][3]['status'])
+        self.assertIn('mergedInto', response.json['data'][1])
+        self.assertIn('mergedInto', response.json['data'][2])
+        self.assertIn('mergedInto', response.json['data'][3])
 
         # Check that new awards were created and have status pending
         response = self.app.get('/tenders/{}/awards?acc_token={}'.format(self.tender_id, self.tender_token))
 
         self.assertEqual(response.status, self.RESPONSE_CODE['200'])
-        self.assertEqual(len(response.json['data']), 5)
-        self.assertEqual(response.json['data'][-1]['status'], 'pending')
+        self.assertEqual(len(response.json['data']), 4)
+        self.assertEqual(response.json['data'][-1]['status'], 'active')
 
     def test_cancel_first_main_award(self):
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        first_additionalAwardIDs = [awards_response[1].json['data']['id']]
-        second_additionalAwardIDs = [awards_response[3].json['data']['id']]
+        first_additionalAwardIDs = [awards_id[1]]
+        second_additionalAwardIDs = [awards_id[3]]
 
         # Merge contracts
         response = self.app.patch_json(
@@ -2804,22 +2900,24 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         first_contract, second_contract, third_contract, fourth_contract = response.json['data']
         self.assertEqual(first_contract['status'], 'cancelled')
-        self.assertEqual(second_contract['status'], 'pending')
-        self.assertNotIn('additionalAwardIDs', first_contract)
-        self.assertNotIn('mergedInto', second_contract)
+        self.assertEqual(second_contract['status'], 'merged')
+        self.assertIn('additionalAwardIDs', first_contract)
+        self.assertIn('mergedInto', second_contract)
         self.assertEqual(third_contract['additionalAwardIDs'], second_additionalAwardIDs)
         self.assertEqual(third_contract['status'], 'pending')
         self.assertEqual(fourth_contract['status'], 'merged')
         self.assertEqual(fourth_contract['mergedInto'], third_contract['id'])
 
     def test_merge_by_two_contracts(self):
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        first_additionalAwardIDs = [awards_response[1].json['data']['id']]
-        second_additionalAwardIDs = [awards_response[3].json['data']['id']]
+        first_additionalAwardIDs = [awards_id[1]]
+        second_additionalAwardIDs = [awards_id[3]]
 
         # Merge contracts
         response = self.app.patch_json(
@@ -2879,16 +2977,18 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         # and check tender status
         response = self.app.get('/tenders/{}'.format(self.tender_id))
-        self.assertEqual(response.json['data']['status'], 'complete')
+        self.assertEqual(response.json['data']['status'], 'active')
 
     def test_try_merge_main_contract(self):
         """Try merge contract which has additionalAwardIDs"""
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        first_additionalAwardIDs = [awards_response[1].json['data']['id']]
+        first_additionalAwardIDs = [awards_id[1]]
 
         # Merge contracts
         response = self.app.patch_json(
@@ -2917,13 +3017,15 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
     def test_try_merge_contract_two_times(self):
         """ Check that we can merge contract 2 times in different contracts """
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        first_additionalAwardIDs = [awards_response[1].json['data']['id']]
-        second_additionalAwardIDs = [awards_response[3].json['data']['id']]
+        first_additionalAwardIDs = [awards_id[1]]
+        second_additionalAwardIDs = [awards_id[3]]
 
         # Merge contracts
         response = self.app.patch_json(
@@ -2953,7 +3055,7 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
         self.assertEqual(fourth_contract["status"], "merged")
 
         # Try merge contract which already merge
-        first_additionalAwardIDs.append(awards_response[3].json['data']['id'])
+        first_additionalAwardIDs.append(awards_id[3])
         response = self.app.patch_json(
             '/tenders/{}/contracts/{}?acc_token={}'.format(
                 self.tender_id, contract_response.json['data'][0]['id'], self.tender_token
@@ -3007,13 +3109,15 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
     def test_activate_contract_with_complaint(self):
         """" Try activate main contract while additional wards has complaints """
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        first_additionalAwardIDs = [awards_response[1].json['data']['id']]
-        second_additionalAwardIDs = [awards_response[3].json['data']['id']]
+        first_additionalAwardIDs = [awards_id[1]]
+        second_additionalAwardIDs = [awards_id[3]]
 
         # Merge contracts
         response = self.app.patch_json(
@@ -3093,46 +3197,38 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
         # Try set status active for first main contract
         response = self.app.patch_json(
             "/tenders/{}/contracts/{}?acc_token={}".format(self.tender_id, first_contract['id'], self.tender_token),
-            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=403
+            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=200
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertEqual(response.json['errors'], [
-            {
-                "location": "body",
-                "name": "data",
-                "description": "Can't sign contract before reviewing all additional complaints"
-            }
-        ])
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         # Try set status active for second main contract
         response = self.app.patch_json(
             "/tenders/{}/contracts/{}?acc_token={}".format(self.tender_id, first_contract['id'], self.tender_token),
-            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=403
+            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=200
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertEqual(response.json['errors'], [
-            {
-                "location": "body",
-                "name": "data",
-                "description": "Can't sign contract before reviewing all additional complaints"
-            }
-        ])
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         # Lets resolve first complaint
-        self.edit_award_complaint(
-            second_contract['awardID'], second_award_complaint['id'], self.tender_token,
-            {"data": {
-                "status": "answered",
-                "resolutionType": "resolved",
-                "resolution": "resolution text " * 2}
-            }
+        data = {'data': {'status': 'answered', 'resolutionType': 'resolved', 'resolution': 'resolution text'}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id, second_contract['awardID'], second_award_complaint['id'], self.tender_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Forbidden')
 
-        self.edit_award_complaint(
-            second_contract['awardID'], second_award_complaint['id'],
-            second_award_complaint_owner_token,
-            {"data": {"satisfied": True, "status": "resolved"}}
+        data = {"data": {"satisfied": True, "status": "resolved"}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id,
+                second_contract['awardID'],
+                second_award_complaint['id'],
+                second_award_complaint_owner_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Can\'t update complaint')
 
         # Try sign first main contract again
         dateSigned = get_now().isoformat()
@@ -3147,32 +3243,31 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
         # Try set status active for second main contract again
         response = self.app.patch_json(
             "/tenders/{}/contracts/{}?acc_token={}".format(self.tender_id, third_contract['id'], self.tender_token),
-            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=403
+            {"data": {"dateSigned": get_now().isoformat(), "status": "active"}}, status=200
         )
-        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
-        self.assertEqual(response.json['errors'], [
-            {
-                "location": "body",
-                "name": "data",
-                "description": "Can't sign contract before reviewing all additional complaints"
-            }
-        ])
+        self.assertEqual(response.status, self.RESPONSE_CODE['200'])
 
         # Lets resolve second complaint
-        self.edit_award_complaint(
-            fourth_contract['awardID'], fourth_award_complaint['id'], self.tender_token,
-            {"data": {
-                "status": "answered",
-                "resolutionType": "resolved",
-                "resolution": "resolution text " * 2
-            }}
+        data = {'data': {'status': 'answered', 'resolutionType': 'resolved', 'resolution': 'resolution text'}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id, fourth_contract['awardID'], fourth_award_complaint['id'], self.tender_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Forbidden')
 
-        self.edit_award_complaint(
-            fourth_contract['awardID'], fourth_award_complaint['id'],
-            fourth_award_complaint_owner_token,
-            {"data": {"satisfied": True, "status": "resolved"}}
+        data = {"data": {"satisfied": True, "status": "resolved"}}
+        response = self.app.patch_json(
+            '/tenders/{}/awards/{}/complaints/{}?acc_token={}'.format(
+                self.tender_id,
+                fourth_contract['awardID'],
+                fourth_award_complaint['id'],
+                fourth_award_complaint_owner_token
+            ), data, status=403
         )
+        self.assertEqual(response.status, self.RESPONSE_CODE['403'])
+        self.assertEqual(response.json['errors'][0]['description'], 'Can\'t update complaint')
 
         # And try sign contract again
         dateSigned = get_now().isoformat()
@@ -3186,13 +3281,16 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
     def test_additional_awards_dateSigned(self):
         """ Try set dateSigned before end complaint period for additional awards """
-        awards_response = self.create_awards()
-        self.active_awards(awards_response)
+
+        awards = [award for award in self.create_awards()]
+        awards_id = [award['id'] for award in awards]
+
+        self.active_awards(*awards_id)
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        first_additionalAwardIDs = [awards_response[1].json['data']['id']]
-        second_additionalAwardIDs = [awards_response[3].json['data']['id']]
+        first_additionalAwardIDs = [awards_id[1]]
+        second_additionalAwardIDs = [awards_id[3]]
 
         # Merge contracts
         response = self.app.patch_json(
