@@ -6,6 +6,7 @@ from openprocurement.api.utils import (
     opresource,
     json_view,
     context_unpack,
+    check_merged_contracts
 )
 from openprocurement.api.validation import (
     validate_contract_data,
@@ -195,6 +196,8 @@ class TenderNegotiationAwardContractResource(TenderAwardContractResource):
             # ensure that nobody is able to add or delete contract.item
             self.request.errors.add('body', 'data', 'Can\'t change items count')
             self.request.errors.status = 403
+            
+        if check_merged_contracts(self.request) is not None:
             return
 
         contract_status = self.request.context.status
@@ -212,6 +215,7 @@ class TenderNegotiationAwardContractResource(TenderAwardContractResource):
             self.LOGGER.info('Updated tender contract {}'.format(self.request.context.id),
                              extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_contract_patch'}))
             return {'data': self.request.context.serialize()}
+
 
 @opresource(name='Tender Negotiation Quick Contracts',
             collection_path='/tenders/{tender_id}/contracts',
