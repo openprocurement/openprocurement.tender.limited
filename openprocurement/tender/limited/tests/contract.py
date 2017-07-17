@@ -2597,7 +2597,6 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        # additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
         additionalAwardIDs = awards_id[1:]
 
         response = self.app.patch_json(
@@ -2647,7 +2646,6 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        # additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
         additionalAwardIDs = awards_id[1:]
 
         response = self.app.patch_json(
@@ -2701,7 +2699,6 @@ class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
 
         # Get created contracts
         contract_response = self.app.get('/tenders/{}/contracts?acc_token={}'.format(self.tender_id, self.tender_token))
-        # additionalAwardIDs = [award_response.json['data']['id'] for award_response in awards_response[1:]]
         additionalAwardIDs = awards_id[1:]
 
         response = self.app.patch_json(
