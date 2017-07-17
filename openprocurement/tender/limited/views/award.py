@@ -339,6 +339,17 @@ class TenderNegotiationAwardResource(TenderAwardResource):
     """ Tender Negotiation Award Resource """
     stand_still_delta = timedelta(days=10)
 
+    def validate_lot_cancellation(self, operation):
+        tender = self.request.validated['tender']
+        award = self.request.validated['award']
+        if tender.get('lots') and tender.get('cancellations') and \
+                [cancellation for cancellation in tender.get('cancellations', []) if cancellation.get('relatedLot') == award.lotID]:
+            self.request.errors.add('body', 'data', 'Can\'t {} award while cancellation for corresponding lot exists'.
+                                    format(operation))
+            self.request.errors.status = 403
+            return
+        return True
+
     @json_view(content_type="application/json", permission='edit_tender', validators=(validate_award_data,))
     def collection_post(self):
         """Accept or reject bidder application
@@ -426,6 +437,8 @@ class TenderNegotiationAwardResource(TenderAwardResource):
             self.request.errors.status = 403
             return
         award = self.request.validated['award']
+        if not self.validate_lot_cancellation('add'):
+            return
         if tender.awards:
             if tender.lots:  # If tender with lots
                 if award.lotID in [aw.lotID for aw in tender.awards if aw.status in ['pending', 'active']]:
@@ -514,10 +527,17 @@ class TenderNegotiationAwardResource(TenderAwardResource):
             return
 
         award = self.request.context
+        if not self.validate_lot_cancellation('update'):
+            return
         award_status = award.status
         apply_patch(self.request, save=False, src=self.request.context.serialize())
         if award.status == "active" and not award.qualified:
             self.request.errors.add('body', 'data', 'Can\'t update award to active status with not qualified')
+            self.request.errors.status = 403
+            return
+        if award.lotID and \
+                [aw.lotID for aw in tender.awards if aw.status in['pending', 'active']].count(award.lotID) > 1:
+            self.request.errors.add('body', 'lotID', 'Another award is already using this lotID.')
             self.request.errors.status = 403
             return
         if award_status == 'pending' and award.status == 'active':
