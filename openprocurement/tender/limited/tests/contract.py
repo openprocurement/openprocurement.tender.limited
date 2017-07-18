@@ -531,8 +531,8 @@ class TenderNegotiationContractResourceTest(TenderContractResourceTest):
         response = self.app.patch_json('/tenders/{}/contracts/{}?acc_token={}'.format(
             self.tender_id, self.contract_id, self.tender_token),
             {'data': {'items': [{}, item]}},
-            status=403)
-        self.assertEqual(response.status, '403 Forbidden')
+            status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.json['errors'][0]["description"],
                          "Can't change items count")
 
