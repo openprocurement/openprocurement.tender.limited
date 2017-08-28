@@ -140,3 +140,23 @@ Schema
 
     |ocdsDescription|
     Name of the unit
+
+Value
+=====
+
+Schema
+------
+
+:amount:
+    float, required
+
+    |ocdsDescription|
+    Amount as a number.
+
+    Should be positive.
+
+:currency:
+    string, required
+
+:valueAddedTaxIncluded:
+    bool, required
