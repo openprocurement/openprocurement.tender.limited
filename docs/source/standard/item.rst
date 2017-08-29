@@ -1,7 +1,7 @@
 .. . Kicking page rebuild 2014-10-30 17:00:08
 .. include:: defs.hrst
 
-.. index:: Item, Parameter, Classification, CPV, Unit
+.. index:: Item, Parameter, Classification, CPV, Unit, Value
 
 .. _Item:
 
@@ -144,6 +144,8 @@ Schema
 :value:
     :ref:`Value`
 
+.. _Value:
+
 Value
 =====
 
@@ -160,6 +162,7 @@ Schema
 
 :currency:
     string, required
+    
     |ocdsDescription|
     The currency in 3-letter ISO 4217 format.
 
