@@ -144,6 +144,8 @@ Schema
 :value:
     :ref:`Value`
 
+.. _Value:
+
 Value
 =====
 
@@ -160,6 +162,7 @@ Schema
 
 :currency:
     string, required
+    
     |ocdsDescription|
     The currency in 3-letter ISO 4217 format.
 
