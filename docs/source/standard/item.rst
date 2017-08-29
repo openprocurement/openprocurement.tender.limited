@@ -141,6 +141,9 @@ Schema
     |ocdsDescription|
     Name of the unit
 
+:value:
+    :ref:`Value`
+
 Value
 =====
 
@@ -157,6 +160,8 @@ Schema
 
 :currency:
     string, required
+    |ocdsDescription|
+    The currency in 3-letter ISO 4217 format.
 
 :valueAddedTaxIncluded:
     bool, required
