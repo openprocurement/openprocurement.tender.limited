@@ -1,0 +1,31 @@
+PATCH /api/2.3/tenders/1cd8628d16b14482805563bf6031ca36/awards/05506b373034472c8d6efe4030501d36?acc_token=216a4dfc67f243979e8e71b44a568354 HTTP/1.0
+Authorization: Basic YnJva2VyOg==
+Content-Length: 33
+Content-Type: application/json
+Host: api-sandbox.openprocurement.org
+
+{
+  "data": {
+    "status": "cancelled"
+  }
+}
+
+Response: 422 Unprocessable Entity
+Content-Type: application/json; charset=UTF-8
+{
+  "status": "error", 
+  "errors": [
+    {
+      "description": [
+        {
+          "additionalAwardIDs": [
+            "awards must has status active"
+          ]
+        }
+      ], 
+      "location": "body", 
+      "name": "contracts"
+    }
+  ]
+}
+
