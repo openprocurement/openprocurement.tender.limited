@@ -1,0 +1,101 @@
+PATCH /api/2.3/tenders/b262af358223405bbc516fc28264e90b/contracts/2ccd8bc9a996422e85301937cb3cddec?acc_token=959c3bef0fbd4043a134975d441cab69 HTTP/1.0
+Authorization: Basic YnJva2VyOg==
+Content-Length: 58
+Content-Type: application/json
+Host: api-sandbox.openprocurement.org
+
+{
+  "data": {
+    "items": [
+      {
+        "unit": {
+          "value": {
+            "amount": 12
+          }
+        }
+      }
+    ]
+  }
+}
+
+Response: 200 OK
+Content-Type: application/json; charset=UTF-8
+{
+  "data": {
+    "status": "pending", 
+    "items": [
+      {
+        "description": "Послуги шкільних їдалень", 
+        "classification": {
+          "scheme": "ДК021", 
+          "description": "Послуги з харчування у школах", 
+          "id": "55523100-3"
+        }, 
+        "description_en": "Services in school canteens", 
+        "additionalClassifications": [
+          {
+            "scheme": "ДКПП", 
+            "id": "55.51.10.300", 
+            "description": "Послуги шкільних їдалень"
+          }
+        ], 
+        "deliveryAddress": {
+          "postalCode": "79000", 
+          "countryName": "Україна", 
+          "streetAddress": "вул. Банкова 1", 
+          "region": "м. Київ", 
+          "locality": "м. Київ"
+        }, 
+        "deliveryDate": {
+          "startDate": "2017-09-02T19:00:50.892512+03:00", 
+          "endDate": "2017-09-05T19:00:50.892512+03:00"
+        }, 
+        "description_ru": "Услуги школьных столовых", 
+        "id": "2dc54675d6364e2baffbc0f8e74432ac", 
+        "unit": {
+          "code": "MON", 
+          "name": "month", 
+          "value": {
+            "currency": "UAH", 
+            "amount": 12.0, 
+            "valueAddedTaxIncluded": true
+          }
+        }, 
+        "quantity": 9
+      }
+    ], 
+    "suppliers": [
+      {
+        "contactPoint": {
+          "email": "soleksuk@gmail.com", 
+          "telephone": "+380 (432) 21-69-30", 
+          "name": "Сергій Олексюк"
+        }, 
+        "identifier": {
+          "scheme": "UA-EDR", 
+          "legalName": "Державне комунальне підприємство громадського харчування «Школяр»", 
+          "id": "13313462", 
+          "uri": "http://sch10.edu.vn.ua/"
+        }, 
+        "name": "ДКП «Школяр»", 
+        "address": {
+          "postalCode": "21100", 
+          "countryName": "Україна", 
+          "streetAddress": "вул. Островського, 33", 
+          "region": "м. Вінниця", 
+          "locality": "м. Вінниця"
+        }
+      }
+    ], 
+    "value": {
+      "currency": "UAH", 
+      "amount": 238.0, 
+      "valueAddedTaxIncluded": true
+    }, 
+    "date": "2017-08-31T19:00:56.083786+03:00", 
+    "awardID": "6050e8cd1839431792d04b20a214c329", 
+    "id": "2ccd8bc9a996422e85301937cb3cddec", 
+    "contractID": "UA-2017-08-31-000001-1"
+  }
+}
+

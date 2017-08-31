@@ -176,6 +176,14 @@ If you want to **lower contract value**, you can insert new one into the `amount
 
 `200 OK` response was returned. The value was modified successfully.
 
+Setting contract.item.unit.value
+--------------------------------
+
+.. include:: tutorial/tender-contract-set-contract_items_unit-value.http
+   :code:
+
+`200 OK` response was returned. The item.unit.value was modified succesfully.
+
 Setting contract signature date
 -------------------------------
 
