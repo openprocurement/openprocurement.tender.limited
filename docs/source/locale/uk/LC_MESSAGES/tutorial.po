@@ -417,9 +417,10 @@ msgid ""
 "**Negotiation.quick** tender contract can be registered after the stand-"
 "still (5 day period after the award confirmation):"
 msgstr ""
-"Угода про закупівлю для **переговорної процедури за нагальною потребою** "
-"може бути зареєстрована одразу після `періоду очікування скарг` (п’ятиденний"
-" період після підтвердження визначення переможця):"
+"Угода про закупівлю для **переговорної процедури за нагальною потребою** може "
+"бути зареєстрована одразу після `періоду очікування "
+"скарг` (п’ятиденний період після "
+"підтвердження визначення переможця):"
 
 #: ../../source/tutorial.rst:278
 msgid "You can change ``reasonType`` value to `unsuccessful`."
@@ -450,7 +451,7 @@ msgid "`200 OK` response was returned. The value was modified successfully."
 msgstr "Було повернуто код відповіді `200 OK`. Значення змінено успішно."
 
 #: ../../source/tutorial.rst:180
-msgid "Setting value per item's unit'
+msgid "Setting value per item's unit"
 msgstr "Встановлення вартості одиниці предмета закупівлі."
 
 #: ../../source/tutorial.rst:185
@@ -498,13 +499,3 @@ msgstr ""
 "При скасуванні, замовник має визначити один з двох типів ``reasonType``: "
 "торги відмінені - `cancelled`, або торги не відбулися - `unsuccessful`. За "
 "замовчуванням, значення ``reasonType`` рівне `cancelled`."
-
-#: ../../source/tutorial.rst:180
-msgid "Setting value per item's unit"
-msgstr ""
-
-#: ../../source/tutorial.rst:185
-msgid ""
-"200 OK response was returned with successfully set item.unit.value "
-"structure."
-msgstr ""
