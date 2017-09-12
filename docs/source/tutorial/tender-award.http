@@ -1,4 +1,4 @@
-POST /api/2.3/tenders/7d7cb83ee1384fb78ca8aaf919990c83/awards?acc_token=a4b7ef7e4b1248eeb4856ef095f8e657 HTTP/1.0
+POST /api/2.3/tenders/319699c45d7a4a6cbb437fab5cc6a22b/awards?acc_token=7b798e8f12644defa0f09edf282ffdd8 HTTP/1.0
 Authorization: Basic YnJva2VyOg==
 Content-Length: 1284
 Content-Type: application/json
@@ -42,11 +42,11 @@ Host: api-sandbox.openprocurement.org
 
 Response: 201 Created
 Content-Type: application/json; charset=UTF-8
-Location: http://api-sandbox.openprocurement.org/api/2.3/tenders/7d7cb83ee1384fb78ca8aaf919990c83/awards/f73383149db344199699e1a8f587d557
+Location: http://api-sandbox.openprocurement.org/api/2.3/tenders/319699c45d7a4a6cbb437fab5cc6a22b/awards/050275b8d62545f7a1605701701e51de
 {
   "data": {
     "status": "pending", 
-    "date": "2017-06-19T20:02:27.381100+03:00", 
+    "date": "2017-06-21T16:18:51.003084+03:00", 
     "suppliers": [
       {
         "contactPoint": {
@@ -70,7 +70,7 @@ Location: http://api-sandbox.openprocurement.org/api/2.3/tenders/7d7cb83ee1384fb
         }
       }
     ], 
-    "id": "f73383149db344199699e1a8f587d557", 
+    "id": "050275b8d62545f7a1605701701e51de", 
     "value": {
       "currency": "UAH", 
       "amount": 475000.0, 

@@ -5,7 +5,9 @@ version = '2.3.26'
 
 requires = [
     'setuptools',
-    'openprocurement.api>=2.3',
+    'openprocurement.api>=2.3',  # XXX TODO set correct version
+    'openprocurement.tender.core',
+    'openprocurement.tender.belowthreshold',
     'openprocurement.tender.openua',
 ]
 
@@ -19,10 +21,10 @@ docs_requires = requires + [
 ]
 
 entry_points = {
-    'openprocurement.api.plugins': [
-        'reporting = openprocurement.tender.limited:includeme',
-        'negotiation = openprocurement.tender.limited:includeme_negotiation',
-        'negotiation.quick = openprocurement.tender.limited:includeme_negotiation_quick'
+    'openprocurement.tender.core.plugins': [
+        'reporting = openprocurement.tender.limited.includeme:includeme',
+        'negotiation = openprocurement.tender.limited.includeme:includeme_negotiation',
+        'negotiation.quick = openprocurement.tender.limited.includeme:includeme_negotiation_quick'
     ]
 }
 

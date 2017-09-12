@@ -1,4 +1,4 @@
-PATCH /api/2.3/tenders/0f67d0af4cdb47f2bab36b37e33bd84a/awards/13926fdfd30c4e2e939e9b7529fb0edd?acc_token=62e6766aacb942c481ff5833e5f1274a HTTP/1.0
+PATCH /api/2.3/tenders/25897276e2804633af97bce1b8823686/awards/c65fb9bc28db473ba98492ed16df24f5?acc_token=255dabb2d2f347409021ef9cfaff7624 HTTP/1.0
 Authorization: Basic YnJva2VyOg==
 Content-Length: 49
 Content-Type: application/json
@@ -17,8 +17,8 @@ Content-Type: application/json; charset=UTF-8
   "data": {
     "status": "active", 
     "complaintPeriod": {
-      "startDate": "2017-06-19T20:02:33.589328+03:00", 
-      "endDate": "2017-06-30T00:00:00+03:00"
+      "startDate": "2017-06-21T16:18:56.546616+03:00", 
+      "endDate": "2017-07-02T00:00:00+03:00"
     }, 
     "suppliers": [
       {
@@ -49,8 +49,8 @@ Content-Type: application/json; charset=UTF-8
       "valueAddedTaxIncluded": true
     }, 
     "qualified": true, 
-    "date": "2017-06-19T20:02:33.656887+03:00", 
-    "id": "13926fdfd30c4e2e939e9b7529fb0edd"
+    "date": "2017-06-21T16:18:56.614098+03:00", 
+    "id": "c65fb9bc28db473ba98492ed16df24f5"
   }
 }
 
