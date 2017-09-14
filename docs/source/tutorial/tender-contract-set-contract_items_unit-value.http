@@ -1,12 +1,20 @@
-PATCH /api/2.3/tenders/37d76fe5ae1c4543b1b7e3be3c479293/contracts/5b51cc8c6dc0460ca90c2024dacaf8ee?acc_token=10c3effe74934c74bb9dedd02b14f1fa HTTP/1.0
+PATCH /api/2.3/tenders/d014500a9769491a81f3f1cecc1004f3/contracts/3dbc3c6138fa47c6a655ea74daa706dc?acc_token=0b5ecdd3b42e4a3eb9f4c05235bdbbfa HTTP/1.0
 Authorization: Basic YnJva2VyOg==
-Content-Length: 30
+Content-Length: 58
 Content-Type: application/json
 Host: api-sandbox.openprocurement.org
 
 {
   "data": {
-    "status": "active"
+    "items": [
+      {
+        "unit": {
+          "value": {
+            "amount": 12
+          }
+        }
+      }
+    ]
   }
 }
 
@@ -14,7 +22,7 @@ Response: 200 OK
 Content-Type: application/json; charset=UTF-8
 {
   "data": {
-    "status": "active", 
+    "status": "pending", 
     "items": [
       {
         "description": "Послуги шкільних їдалень", 
@@ -43,7 +51,17 @@ Content-Type: application/json; charset=UTF-8
           "endDate": "2017-09-19T19:39:39.580353+03:00"
         }, 
         "description_ru": "Услуги школьных столовых", 
-        "id": "2dc54675d6364e2baffbc0f8e74432ac"
+        "id": "2dc54675d6364e2baffbc0f8e74432ac", 
+        "unit": {
+          "code": "MON", 
+          "name": "month", 
+          "value": {
+            "currency": "UAH", 
+            "amount": 12.0, 
+            "valueAddedTaxIncluded": true
+          }
+        }, 
+        "quantity": 9
       }
     ], 
     "suppliers": [
@@ -71,13 +89,12 @@ Content-Type: application/json; charset=UTF-8
     ], 
     "value": {
       "currency": "UAH", 
-      "amount": 475000.0, 
+      "amount": 238.0, 
       "valueAddedTaxIncluded": true
     }, 
-    "dateSigned": "2017-09-14T19:40:55.183568+03:00", 
-    "date": "2017-09-14T19:40:55.195896+03:00", 
-    "awardID": "2b0084bf3ebb4d60b2b197661dc19c0d", 
-    "id": "5b51cc8c6dc0460ca90c2024dacaf8ee", 
+    "date": "2017-09-14T19:39:54.489404+03:00", 
+    "awardID": "fad3d99dace64fb4b61d9c1713165c1a", 
+    "id": "3dbc3c6138fa47c6a655ea74daa706dc", 
     "contractID": "UA-2017-09-14-000001-1"
   }
 }
