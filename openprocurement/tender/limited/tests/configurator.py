@@ -1,26 +1,38 @@
 import unittest
+from openprocurement.tender.core.tests.configurator import ConfiguratorTestMixin
 from openprocurement.tender.limited.adapters import (TenderNegotiationConfigurator,
                                                      TenderReportingConfigurator,
-                                                     TenderNegotiationQuickConfigurator,
-                                                     )
+                                                     TenderNegotiationQuickConfigurator)
+from openprocurement.tender.limited.models import (ReportingTender, NegotiationTender,
+                                                   NegotiationQuickTender)
 
 
-class ConfiguratorValueTest(unittest.TestCase):
+class ConfiguratorTestTenderNegotiationConfigurator(unittest.TestCase, ConfiguratorTestMixin):
+    configurator_class = TenderNegotiationConfigurator
+    reverse_awarding_criteria = False
+    awarding_criteria_key = 'not yet implemented'
+    configurator_model = NegotiationTender
 
-    def test_reverse_awarding_criteria(self):
-        self.assertEqual(TenderNegotiationConfigurator.reverse_awarding_criteria, False)
-        self.assertEqual(TenderNegotiationQuickConfigurator.reverse_awarding_criteria, False)
-        self.assertEqual(TenderReportingConfigurator.reverse_awarding_criteria, False)
 
-    def test_awarding_criteria_key(self):
-        self.assertEqual(TenderNegotiationConfigurator.awarding_criteria_key, 'amountPerfomance')
-        self.assertEqual(TenderNegotiationQuickConfigurator.awarding_criteria_key, 'amountPerfomance')
-        self.assertEqual(TenderReportingConfigurator.awarding_criteria_key, 'amountPerfomance')
+class ConfiguratorTestTenderReportingConfigurator(unittest.TestCase, ConfiguratorTestMixin):
+    configurator_class = TenderReportingConfigurator
+    reverse_awarding_criteria = False
+    awarding_criteria_key = 'not yet implemented'
+    configurator_model = ReportingTender
+
+
+class ConfiguratorTestTenderNegotiationQuickConfigurator(unittest.TestCase, ConfiguratorTestMixin):
+    configurator_class = TenderNegotiationQuickConfigurator
+    reverse_awarding_criteria = False
+    awarding_criteria_key = 'not yet implemented'
+    configurator_model = NegotiationQuickTender
 
 
 def suite():
-    current_suite = unittest.TestSuite()
-    current_suite.addTest(unittest.makeSuite(ConfiguratorValueTest))
+    suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(ConfiguratorTestTenderNegotiationConfigurator))
+    suite.addTest(unittest.makeSuite(ConfiguratorTestTenderReportingConfigurator))
+    suite.addTest(unittest.makeSuite(ConfiguratorTestTenderNegotiationQuickConfigurator))
     return suite
 
 
