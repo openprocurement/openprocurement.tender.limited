@@ -153,6 +153,9 @@ msgstr "Unit"
 msgid "UN/CEFACT Recommendation 20 unit code."
 msgstr "Код одиниці в UN/CEFACT Recommendation 20."
 
+msgid "Price per unit."
+msgstr "Ціна за одиницю."
+
 msgid "|ocdsDescription| Name of the unit"
 msgstr "|ocdsDescription| Назва одиниці"
 
