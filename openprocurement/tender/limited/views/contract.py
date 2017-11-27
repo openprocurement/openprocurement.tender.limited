@@ -3,12 +3,13 @@ from openprocurement.api.utils import (
     json_view, context_unpack, get_now, raise_operation_error
 )
 from openprocurement.tender.core.utils import (
-    apply_patch, save_tender, optendersresource
+    apply_patch, save_tender, optendersresource, check_merged_contracts
 )
 from openprocurement.tender.core.validation import (
     validate_contract_data,
     validate_patch_contract_data,
-    validate_update_contract_value
+    validate_update_contract_value,
+    validate_contract_signing
 )
 from openprocurement.tender.belowthreshold.views.contract import (
     TenderAwardContractResource as BaseTenderAwardContractResource
@@ -19,6 +20,7 @@ from openprocurement.tender.limited.validation import (
     validate_contract_items_count_modification,
     validate_contract_with_cancellations_and_contract_signing
 )
+
 
 def check_tender_status(request):
     tender = request.validated['tender']
@@ -51,7 +53,8 @@ def check_tender_negotiation_status(request):
             elif last_award.status == 'unsuccessful':
                 lot.status = 'unsuccessful'
                 continue
-            elif last_award.status == 'active' and any([i.status == 'active' and i.awardID == last_award.id for i in tender.contracts]):
+            elif last_award.status == 'active' and any(
+                    [i.status == 'active' and i.awardID == last_award.id for i in tender.contracts]):
                 lot.status = 'complete'
         statuses = set([lot.status for lot in tender.lots])
         if statuses == set(['cancelled']):
@@ -71,8 +74,8 @@ def check_tender_negotiation_status(request):
                    path='/tenders/{tender_id}/contracts/{contract_id}',
                    description="Tender contracts")
 class TenderAwardContractResource(BaseTenderAwardContractResource):
-
-    @json_view(content_type="application/json", permission='create_contract', validators=(validate_contract_data, validate_contract_operation_not_in_active))
+    @json_view(content_type="application/json", permission='create_contract',
+               validators=(validate_contract_data, validate_contract_operation_not_in_active))
     def collection_post(self):
         """Post a contract for award
         """
@@ -81,14 +84,18 @@ class TenderAwardContractResource(BaseTenderAwardContractResource):
         tender.contracts.append(contract)
         if save_tender(self.request):
             self.LOGGER.info('Created tender contract {}'.format(contract.id),
-                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_contract_create'}, {'contract_id': contract.id}))
+                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_contract_create'},
+                                                  {'contract_id': contract.id}))
             self.request.response.status = 201
-            self.request.response.headers['Location'] = self.request.route_url('{}:Tender Contracts'.format(tender.procurementMethodType),
-                                                                               tender_id=tender.id, contract_id=contract['id'])
+            self.request.response.headers['Location'] = self.request.route_url(
+                '{}:Tender Contracts'.format(tender.procurementMethodType),
+                tender_id=tender.id, contract_id=contract['id'])
             return {'data': contract.serialize()}
 
-    @json_view(content_type="application/json", permission='edit_tender', validators=(validate_patch_contract_data, validate_contract_operation_not_in_active, validate_contract_update_in_cancelled,
-               validate_update_contract_value, validate_contract_items_count_modification))
+    @json_view(content_type="application/json", permission='edit_tender', validators=(
+            validate_patch_contract_data, validate_contract_operation_not_in_active,
+            validate_contract_update_in_cancelled,
+            validate_update_contract_value, validate_contract_items_count_modification))
     def patch(self):
         """Update of contract
         """
@@ -114,11 +121,17 @@ class TenderAwardContractResource(BaseTenderAwardContractResource):
                    description="Tender contracts")
 class TenderNegotiationAwardContractResource(TenderAwardContractResource):
     """ Tender Negotiation Award Contract Resource """
-    @json_view(content_type="application/json", permission='edit_tender', validators=(validate_patch_contract_data, validate_contract_operation_not_in_active, validate_contract_update_in_cancelled,
-               validate_contract_with_cancellations_and_contract_signing, validate_update_contract_value, validate_contract_items_count_modification))
+
+    @json_view(content_type="application/json", permission='edit_tender', validators=(
+            validate_patch_contract_data, validate_contract_operation_not_in_active,
+            validate_contract_update_in_cancelled,
+            validate_contract_with_cancellations_and_contract_signing, validate_update_contract_value,
+            validate_contract_items_count_modification, validate_contract_signing))
     def patch(self):
         """Update of contract
         """
+        if check_merged_contracts(self.request) is not None:
+            return
         contract_status = self.request.context.status
         apply_patch(self.request, save=False, src=self.request.context.serialize())
         self.request.context.date = get_now()
@@ -128,6 +141,7 @@ class TenderNegotiationAwardContractResource(TenderAwardContractResource):
         if self.request.context.status == 'active' and not self.request.context.dateSigned:
             self.request.context.dateSigned = get_now()
         check_tender_negotiation_status(self.request)
+
         if save_tender(self.request):
             self.LOGGER.info('Updated tender contract {}'.format(self.request.context.id),
                              extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_contract_patch'}))

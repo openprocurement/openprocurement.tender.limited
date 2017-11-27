@@ -23,7 +23,7 @@ from openprocurement.tender.core.models import (
     view_role, create_role, edit_role, enquiries_role, view_bid_role,
     Administrator_role, chronograph_role, chronograph_view_role,
     embedded_lot_role, default_lot_role, validate_lots_uniq,
-    BaseLot, BaseAward
+    BaseLot, BaseAward, ComplaintModelType
 )
 
 from openprocurement.tender.core.models import (
@@ -232,6 +232,7 @@ class Tender(BaseTender):
     procurementMethodType = StringType(default="reporting")
     procuringEntity = ModelType(ProcuringEntity, required=True)  # The entity managing the procurement, which may be different from the buyer who is paying / using the items being procured.
     awards = ListType(ModelType(Award), default=list())
+    complaints = ListType(ComplaintModelType(Complaint), default=list())
     contracts = ListType(ModelType(Contract), default=list())
     status = StringType(choices=['draft', 'active', 'complete', 'cancelled', 'unsuccessful'], default='active')
     mode = StringType(choices=['test'])
