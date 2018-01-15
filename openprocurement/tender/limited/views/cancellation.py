@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from openprocurement.api.utils import (
-    json_view, context_unpack, APIResource, get_now, raise_operation_error
+    json_view, context_unpack, APIResource, get_now
 )
 
 from openprocurement.tender.core.utils import (
@@ -8,14 +8,19 @@ from openprocurement.tender.core.utils import (
 )
 
 from openprocurement.tender.core.validation import (
-    validate_cancellation_data, validate_patch_cancellation_data,
+    validate_cancellation_data,
+    validate_patch_cancellation_data,
+    validate_cancellation as validate_cancellation_base
 )
 
 from openprocurement.tender.belowthreshold.views.cancellation import (
     TenderCancellationResource
 )
 
-from openprocurement.tender.limited.validation import validate_cancellation_in_termainated_status
+from openprocurement.tender.limited.validation import (
+    validate_cancellation_in_termainated_status,
+    validate_cancellation
+)
 
 
 @optendersresource(name='reporting:Tender Cancellations',
@@ -25,7 +30,9 @@ from openprocurement.tender.limited.validation import validate_cancellation_in_t
                    description="Tender cancellations")
 class TenderReportingCancellationResource(APIResource):
 
-    @json_view(content_type="application/json", validators=(validate_cancellation_data, validate_cancellation_in_termainated_status), permission='edit_tender')
+    @json_view(content_type="application/json",
+               validators=(validate_cancellation_data, validate_cancellation_in_termainated_status),
+               permission='edit_tender')
     def collection_post(self):
         """Post a cancellation
         """
@@ -37,10 +44,12 @@ class TenderReportingCancellationResource(APIResource):
         tender.cancellations.append(cancellation)
         if save_tender(self.request):
             self.LOGGER.info('Created tender cancellation {}'.format(cancellation.id),
-                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_cancellation_create'}, {'cancellation_id': cancellation.id}))
+                             extra=context_unpack(self.request, {'MESSAGE_ID': 'tender_cancellation_create'},
+                                                  {'cancellation_id': cancellation.id}))
             self.request.response.status = 201
-            self.request.response.headers['Location'] = self.request.route_url('{}:Tender Cancellations'.format(tender.procurementMethodType),
-                                                                               tender_id=tender.id, cancellation_id=cancellation.id)
+            self.request.response.headers['Location'] = self.request.route_url(
+                '{}:Tender Cancellations'.format(tender.procurementMethodType),
+                tender_id=tender.id, cancellation_id=cancellation.id)
             return {'data': cancellation.serialize("view")}
 
     @json_view(permission='view_tender')
@@ -55,7 +64,9 @@ class TenderReportingCancellationResource(APIResource):
         """
         return {'data': self.request.validated['cancellation'].serialize("view")}
 
-    @json_view(content_type="application/json", validators=(validate_patch_cancellation_data, validate_cancellation_in_termainated_status), permission='edit_tender')
+    @json_view(content_type="application/json",
+               validators=(validate_patch_cancellation_data, validate_cancellation_in_termainated_status),
+               permission='edit_tender')
     def patch(self):
         """Post a cancellation resolution
         """
@@ -77,20 +88,17 @@ class TenderReportingCancellationResource(APIResource):
 class TenderNegotiationCancellationResource(TenderCancellationResource):
     """ Tender Negotiation Cancellation Resource """
 
-    def validate_cancellation(self, operation):
-        """ TODO move validators
-        This class is inherited from below package, but validate_cancellation function has different validators.
-        For now, we have no way to use different validators on methods according to procedure type.
-        """
-        if not super(TenderNegotiationCancellationResource, self).validate_cancellation(operation):
-            return
-        tender = self.request.validated['tender']
-        cancellation = self.request.validated['cancellation']
-        if tender.lots:
-            if not cancellation.relatedLot:
-                if [lot for lot in tender.lots if lot.status == 'complete']:
-                    raise_operation_error(self.request, 'Can\'t {} cancellation, if there is at least one complete lot'.format(operation))
-        return True
+    @json_view(content_type="application/json",
+               validators=(validate_cancellation_data, validate_cancellation_base, validate_cancellation),
+               permission='edit_tender')
+    def collection_post(self):
+        return super(TenderNegotiationCancellationResource, self).collection_post()
+
+    @json_view(content_type="application/json",
+               validators=(validate_patch_cancellation_data, validate_cancellation_base, validate_cancellation),
+               permission='edit_tender')
+    def patch(self):
+        return super(TenderNegotiationCancellationResource, self).patch()
 
 
 @optendersresource(name='negotiation.quick:Tender Cancellations',
