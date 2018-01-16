@@ -1,5 +1,6 @@
 language: python
 sudo: required
+group: deprecated-2017Q4
 before_script:
   - sudo add-apt-repository ppa:chris-lea/libsodium -y
   - sudo apt-get -qq update
@@ -24,6 +25,6 @@ install:
   - bin/buildout -N
 script:
   - bin/nosetests
-  - bin/pylint --errors-only --disable=no-member,not-an-iterable,bad-super-call,unsubscriptable-object,too-many-format-args openprocurement.tender.limited
+  - bin/pylint --errors-only openprocurement.tender.limited
 after_success:
   - bin/coveralls
