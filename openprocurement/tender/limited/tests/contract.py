@@ -3,13 +3,11 @@ import unittest
 
 from openprocurement.api.constants import SANDBOX_MODE
 from openprocurement.api.tests.base import snitch
-
 from openprocurement.tender.belowthreshold.tests.base import test_organization
 from openprocurement.tender.belowthreshold.tests.contract import (
     TenderContractResourceTestMixin,
     TenderContractDocumentResourceTestMixin
 )
-
 from openprocurement.tender.limited.tests.base import (
     BaseTenderContentWebTest,
     test_lots,
@@ -32,10 +30,48 @@ from openprocurement.tender.limited.tests.contract_blanks import (
     tender_negotiation_contract_signature_date,
     items,
     # TenderContractResourceTest
+    create_tender_contract_invalid,
     create_tender_contract,
     patch_tender_contract,
     tender_contract_signature_date,
+    get_tender_contract,
+    get_tender_contracts,
     award_id_change_is_not_allowed,
+    # TenderContractDocumentResourceTest
+    not_found,
+    create_tender_contract_document,
+    put_tender_contract_document,
+    patch_tender_contract_document,
+    # TenderMergedContracts2LotsResourceTest
+    not_found_contract_for_award_2,
+    try_merge_not_real_award_2,
+    try_merge_itself_2,
+    standstill_period_2,
+    activate_contract_with_complaint_2,
+    cancel_award_2,
+    cancel_main_award_2,
+    merge_two_contracts_with_different_supliers_ids_2,
+    merge_two_contracts_with_different_suppliers_scheme_2,
+    set_big_value_2,
+    # TenderMergedContracts3LotsResourceTest
+    merge_three_contracts_3,
+    standstill_period_3,
+    activate_contract_with_complaint_3,
+    cancel_award_3,
+    cancel_main_award_3,
+    try_merge_pending_award_3,
+    additional_awards_dateSigned_3,
+    # TenderMergedContracts4LotsResourceTest
+    merge_four_contracts_4,
+    sign_contract_4,
+    cancel_award_4,
+    cancel_main_award_4,
+    cancel_first_main_award_4,
+    merge_by_two_contracts_4,
+    try_merge_main_contract_4,
+    try_merge_contract_two_times_4,
+    activate_contract_with_complaint_4,
+    additional_awards_dateSigned_4,
 )
 
 
@@ -60,9 +96,12 @@ class TenderContractResourceTest(BaseTenderContentWebTest, TenderContractResourc
         super(TenderContractResourceTest, self).setUp()
         self.create_award()
 
+    test_create_tender_contract_invalid = snitch(create_tender_contract_invalid)
     test_create_tender_contract = snitch(create_tender_contract)
     test_patch_tender_contract = snitch(patch_tender_contract)
     test_tender_contract_signature_date = snitch(tender_contract_signature_date)
+    test_get_tender_contract = snitch(get_tender_contract)
+    test_get_tender_contracts = snitch(get_tender_contracts)
     test_award_id_change_is_not_allowed = snitch(award_id_change_is_not_allowed)
 
 
@@ -271,6 +310,11 @@ class TenderContractDocumentResourceTest(BaseTenderContentWebTest, TenderContrac
         response = self.app.get('/tenders/{}/contracts'.format(self.tender_id))
         self.contract_id = response.json['data'][0]['id']
 
+    test_not_found = snitch(not_found)
+    test_create_tender_contract_document = snitch(create_tender_contract_document)
+    test_put_tender_contract_document = snitch(put_tender_contract_document)
+    test_patch_tender_contract_document = snitch(patch_tender_contract_document)
+
 
 class TenderContractNegotiationDocumentResourceTest(TenderContractDocumentResourceTest):
     initial_data = test_tender_negotiation_data
@@ -317,10 +361,221 @@ class TenderContractNegotiationQuickLotDocumentResourceTest(TenderContractNegoti
     initial_data = test_tender_negotiation_quick_data
 
 
+class TenderMergedContracts2LotsResourceTest(BaseTenderContentWebTest):
+    initial_status = 'active'
+    initial_data = test_tender_negotiation_data
+    initial_auth = ('Basic', ('broker', ''))
+
+    RESPONSE_CODE = {
+        '200': '200 OK',
+        '201': '201 Created',
+        '403': '403 Forbidden',
+        '404': '404 Not Found',
+        '415': '415 Unsupported Media Type',
+        '422': '422 Unprocessable Entity'
+    }
+
+    def create_awards(self):
+        """Create two awards and return them"""
+        authorization = self.app.authorization
+        self.app.authorization = ('Basic', ('token', ''))
+
+        # Create two awards
+        self.app.patch_json(
+            '/tenders/{}?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': {'items': self.initial_data['items'] * 2}}
+        )
+
+        lots_response = list()
+        for _ in range(2):
+            lots_response.append(self.app.post_json(
+                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+                {'data': test_lots[0]}
+            ).json['data'])
+
+        awards_response = list()
+
+        for lot in lots_response:
+            awards_response.append(self.app.post_json(
+                '/tenders/{}/awards'.format(self.tender_id), {
+                    'data':
+                        {
+                            'suppliers': [test_organization],
+                            'status': 'pending',
+                            'value': lot['value'],
+                            'lotID': lot['id']
+                        }
+                }
+            ).json['data'])
+
+        self.app.authorization = authorization
+
+        return awards_response
+
+    def active_awards(self, *args):
+        for award_id in args:
+            self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
+                self.tender_id, award_id, self.tender_token),
+                {'data': {'status': 'active', 'qualified': True}}
+            )
+
+    test_not_found_contract_for_award = snitch(not_found_contract_for_award_2)
+    test_try_merge_not_real_award = snitch(try_merge_not_real_award_2)
+    test_try_merge_itself = snitch(try_merge_itself_2)
+    test_standstill_period = snitch(standstill_period_2)
+    test_activate_contract_with_complaint = snitch(activate_contract_with_complaint_2)
+    test_cancel_award = snitch(cancel_award_2)
+    test_cancel_main_award = snitch(cancel_main_award_2)
+    test_merge_two_contracts_with_different_supliers_ids = snitch(merge_two_contracts_with_different_supliers_ids_2)
+    test_merge_two_contracts_with_different_suppliers_scheme = snitch(
+        merge_two_contracts_with_different_suppliers_scheme_2)
+    test_set_big_value = snitch(set_big_value_2)
+
+
+class TenderMergedContracts3LotsResourceTest(BaseTenderContentWebTest):
+    initial_status = 'active'
+    initial_data = test_tender_negotiation_data
+    initial_auth = ('Basic', ('broker', ''))
+
+    RESPONSE_CODE = {
+        '200': '200 OK',
+        '201': '201 Created',
+        '403': '403 Forbidden',
+        '404': '404 Not Found',
+        '415': '415 Unsupported Media Type',
+        '422': '422 Unprocessable Entity'
+    }
+
+    def create_awards(self):
+        """Create three awards and return them"""
+        authorization = self.app.authorization
+        self.app.authorization = ('Basic', ('token', ''))
+
+        # Create three awards
+        self.app.patch_json(
+            '/tenders/{}?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': {'items': self.initial_data['items'] * 2}}
+        )
+
+        lots_response = list()
+        for _ in range(3):
+            lots_response.append(self.app.post_json(
+                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+                {'data': test_lots[0]}
+            ).json['data'])
+
+        awards_response = list()
+
+        for lot in lots_response:
+            awards_response.append(self.app.post_json(
+                '/tenders/{}/awards'.format(self.tender_id), {
+                    'data':
+                        {
+                            'suppliers': [test_organization],
+                            'status': 'pending',
+                            'value': lot['value'],
+                            'lotID': lot['id']
+                        }
+                }
+            ).json['data'])
+
+        self.app.authorization = authorization
+
+        return awards_response
+
+    def active_awards(self, *args):
+        for award_id in args:
+            self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
+                self.tender_id, award_id, self.tender_token),
+                {'data': {'status': 'active', 'qualified': True}}
+            )
+
+    test_merge_three_contracts = snitch(merge_three_contracts_3)
+    test_standstill_period = snitch(standstill_period_3)
+    test_activate_contract_with_complaint = snitch(activate_contract_with_complaint_3)
+    test_cancel_award = snitch(cancel_award_3)
+    test_cancel_main_award = snitch(cancel_main_award_3)
+    test_try_merge_pending_award = snitch(try_merge_pending_award_3)
+    test_additional_awards_dateSigned = snitch(additional_awards_dateSigned_3)
+
+
+class TenderMergedContracts4LotsResourceTest(BaseTenderContentWebTest):
+    initial_status = 'active'
+    initial_data = test_tender_negotiation_data
+    initial_auth = ('Basic', ('broker', ''))
+
+    RESPONSE_CODE = {
+        '200': '200 OK',
+        '201': '201 Created',
+        '403': '403 Forbidden',
+        '404': '404 Not Found',
+        '415': '415 Unsupported Media Type',
+        '422': '422 Unprocessable Entity'
+    }
+
+    def create_awards(self):
+        """Create four awards and return them"""
+        authorization = self.app.authorization
+        self.app.authorization = ('Basic', ('token', ''))
+
+        # Create four  awards
+        self.app.patch_json(
+            '/tenders/{}?acc_token={}'.format(self.tender_id, self.tender_token),
+            {'data': {'items': self.initial_data['items'] * 2}}
+        )
+
+        lots_response = list()
+        for _ in range(4):
+            lots_response.append(self.app.post_json(
+                '/tenders/{}/lots?acc_token={}'.format(self.tender_id, self.tender_token),
+                {'data': test_lots[0]}
+            ).json['data'])
+
+        awards_response = list()
+
+        for lot in lots_response:
+            awards_response.append(self.app.post_json(
+                '/tenders/{}/awards'.format(self.tender_id), {
+                    'data':
+                        {
+                            'suppliers': [test_organization],
+                            'status': 'pending',
+                            'value': lot['value'],
+                            'lotID': lot['id']
+                        }
+                }
+            ).json['data'])
+
+        self.app.authorization = authorization
+
+        return awards_response
+
+    def active_awards(self, *args):
+        for award_id in args:
+            self.app.patch_json('/tenders/{}/awards/{}?acc_token={}'.format(
+                self.tender_id, award_id, self.tender_token),
+                {'data': {'status': 'active', 'qualified': True}}
+            )
+
+    test_merge_four_contracts = snitch(merge_four_contracts_4)
+    test_sign_contract = snitch(sign_contract_4)
+    test_cancel_award = snitch(cancel_award_4)
+    test_cancel_main_award = snitch(cancel_main_award_4)
+    test_cancel_first_main_award = snitch(cancel_first_main_award_4)
+    test_merge_by_two_contracts = snitch(merge_by_two_contracts_4)
+    test_try_merge_main_contract = snitch(try_merge_main_contract_4)
+    test_try_merge_contract_two_times = snitch(try_merge_contract_two_times_4)
+    test_activate_contract_with_complaint = snitch(activate_contract_with_complaint_4)
+    test_additional_awards_dateSigned = snitch(additional_awards_dateSigned_4)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(TenderContractResourceTest))
     suite.addTest(unittest.makeSuite(TenderContractDocumentResourceTest))
+    suite.addTest(unittest.makeSuite(TenderMergedContracts2LotsResourceTest))
+    suite.addTest(unittest.makeSuite(TenderMergedContracts3LotsResourceTest))
+    suite.addTest(unittest.makeSuite(TenderMergedContracts4LotsResourceTest))
     return suite
 
 
