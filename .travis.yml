@@ -25,6 +25,6 @@ install:
   - bin/buildout -N
 script:
   - bin/nosetests
-  - bin/pylint --errors-only --disable=no-member openprocurement.tender.limited
+  - bin/flake8 openprocurement/tender/limited --ignore=E501
 after_success:
   - bin/coveralls
