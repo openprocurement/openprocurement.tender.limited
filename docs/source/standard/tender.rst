@@ -108,7 +108,7 @@ Schema
         
     Procurement Method of the Tender.
 
-:procurementMethodRationale:
+.. :procurementMethodRationale:
     string, multilingual
 
     Procurement Method Rationale of tender.
@@ -137,7 +137,7 @@ Schema
     
    Causes for using negotiation or negotiation.quick procedures. For more details see Article 35 of the Law of Ukraine "On Public Procurement".
 
-       Possible values for **negotiation** and **negotiation.quick** procedure:
+       Possible values for **negotiation** and **negotiation.quick** procedures:
         
    * `artContestIP`
    Purchase of art or intellectual property

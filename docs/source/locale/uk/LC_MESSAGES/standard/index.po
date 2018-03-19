@@ -15,11 +15,9 @@ msgstr ""
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 "X-Generator: Poedit 1.8.5\n"
 
-#: ../../source/standard/index.rst:5
 msgid "Data Standard"
 msgstr "Стандарт даних"
 
-#: ../../source/standard/index.rst:7
 msgid ""
 "Data standard is modelled along the `Open Contracting Standard <http://"
 "standard.open-contracting.org/>`_ with extensions in areas that were not "
